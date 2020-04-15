@@ -28,12 +28,10 @@ namespace Imply
         unique_ptr<TLinkID[]> falseArray;
     public:
         Node();
-        ~Node();
-        Node(const Node& other);
-        Node& operator=(const Node& other);
-        Node(Node&& other);
-        Node& operator=(Node&& other);
-        void swap(Node& first, Node& second);
+        Node(const Node& other) = delete;
+        Node& operator=(const Node& other) = delete;
+        Node(Node&& other) = delete;
+        Node& operator=(Node&& other) = delete;
     };
 
     class Link
@@ -43,18 +41,18 @@ namespace Imply
         TNodeID inCount, outCount;
         // Conditional
         TNodeID inLimitA, outLimitA;
-        TNodeID trueOutLen, falseOutLen, *outArray;
+        TNodeID trueOutLen, falseOutLen;
+        unique_ptr<TNodeID[]> outArray;
         // Contrapositive
         TNodeID inLimitB, outLimitB;
-        TNodeID trueInLen, falseInLen, *inArray;
+        TNodeID trueInLen, falseInLen;
+        unique_ptr<TNodeID[]> inArray;
     public:
         Link();
-        ~Link();
-        Link(const Link& other);
-        Link& operator=(const Link& other);
-        Link(Link&& other);
-        Link& operator=(Link&& other);
-        void swap(Link& first, Link& second);
+        Link(const Link& other) = delete;
+        Link& operator=(const Link& other) = delete;
+        Link(Link&& other) = delete;
+        Link& operator=(Link&& other) = delete;
     };
 
     class Engine
@@ -64,84 +62,9 @@ namespace Imply
         vector<Link> linkVector;
     public:
         Engine();
-        ~Engine();
         Engine(const Engine& other);
         Engine& operator=(const Engine& other);
         Engine(Engine&& other);
         Engine& operator=(Engine&& other);
-        void swap(Engine& first, Engine& second);
     };
 };
-
-// class Compiler
-// {
-// private:
-//     struct Statement
-//     {
-//         const vector<TNodeID> trueInNodes;
-//         const vector<TNodeID> falseInNodes;
-//         const Equality inEquality;
-//         const TNodeID inLimit;
-//         const vector<TNodeID> trueOutNodes;
-//         const vector<TNodeID> falseOutNodes;
-//         const Equality outEquality;
-//         const TNodeID outLimit;
-//         Statement(
-//             const vector<TNodeID> trueInNodes, 
-//             const vector<TNodeID> falseInNodes, 
-//             const Equality inEquality, TNodeID inlimit, 
-//             const vector<TNodeID> trueOutNodes, 
-//             const vector<TNodeID> falseOutNodes, 
-//             const Equality outEquality, TNodeID outLimit);
-//     };
-
-// public:
-//     void add(
-//         const vector<TNodeID> trueInNodes, 
-//         const vector<TNodeID> falseInNodes, 
-//         const Equality inEquality, TNodeID inlimit, 
-//         const vector<TNodeID> trueOutNodes, 
-//         const vector<TNodeID> falseOutNodes, 
-//         const Equality outEquality, TNodeID outLimit);
-
-//     void compile(Engine& engine);
-
-// private:
-
-// };
-
-// struct Link
-// {
-//     TNodeID inLimitA, outLimitA;
-//     TNodeID trueOutLen, falseOutLen, *outArray;
-//     TNodeID inLimitB, outLimitB;
-//     TNodeID trueInLen, falseInLen, *inArray;
-//     Link(
-//         TNodeID inLimitA, TNodeID outLimitA, 
-//         vector<TNodeID> trueInNodes, vector<TNodeID> falseInNodes,
-//         TNodeID inLimitB, TNodeID outLimitB, 
-//         vector<TNodeID> trueOutNodes, vector<TNodeID> falseOutNodes);
-//     ~Link();
-// };
-
-// Compile Time
-// forward_list<_Link> linkList;
-// vector<_Node> nodeVector;
-
-// Run Time
-
-// public:
-//     Imply();
-//     ~Imply();
-
-//     void add(
-//         vector<TNodeID> trueInNodes, vector<TNodeID> falseInNodes, 
-//         Equality inEquality, TNodeID inLimit, 
-//         vector<TNodeID> trueOutNodes, vector<TNodeID> falseOutNodes,
-//         Equality outEquality, TNodeID outLimit
-//     );
-
-//     void compile();
-
-// private:
-//     void equalizeLimit(Equality equality, TNodeID maxSize, TNodeID& limit);
