@@ -1,5 +1,7 @@
 #include <vector>
+#include <memory>
 using std::vector;
+using std::unique_ptr;
 
 // template<typename TNodeID, typename TLinkID>
 namespace Imply
@@ -20,8 +22,10 @@ namespace Imply
     {
     private:
         State state;
-        TLinkID trueInLen, trueOutLen, *trueArray;
-        TLinkID falseInLen, falseOutLen, *falseArray;
+        TLinkID trueInLen, trueOutLen;
+        unique_ptr<TLinkID[]> trueArray;
+        TLinkID falseInLen, falseOutLen;
+        unique_ptr<TLinkID[]> falseArray;
     public:
         Node();
         ~Node();

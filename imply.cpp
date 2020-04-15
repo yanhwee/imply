@@ -1,59 +1,51 @@
 #include <vector>
+#include <memory>
 #include "imply.h"
 using std::vector;
+using std::make_unique;
 using namespace Imply;
 
 Node::Node()
     : state(MAYBE),
-      trueInLen(0), trueOutLen(0), trueArray(nullptr),
-      falseInLen(0), falseOutLen(0), falseArray(nullptr) {}
+      trueInLen(0), trueOutLen(0),
+      trueArray(make_unique<TLinkID[]>(0)),
+      falseInLen(0), falseOutLen(0),
+      falseArray(make_unique<TLinkID[]>(0)) {}
 
-Node::~Node()
-{
-    delete[] trueArray;
-    delete[] falseArray;
-}
+Node::~Node() {}
 
-Node::Node(const Node& other)
+// Node::Node(const Node& other)
+//     : state(other.state),
+//       trueInLen(other.trueInLen), trueOutLen(other.trueOutLen),
+//       falseInLen(other.falseInLen), falseOutLen(other.falseOutLen)
+// {
+//     TLinkID trueLen = trueInLen + trueOutLen;
+//     TLinkID falseLen = falseInLen + falseOutLen;
+//     trueArray = make_unique<TLinkID[]>(trueLen);
+//     falseArray = make_unique<TLinkID[]>(falseLen);
+//     std::copy(other.trueArray.get(), other.trueArray.get() + trueLen, trueArray.get());
+//     std::copy(other.falseArray.get(), other.falseArray.get() + falseLen, falseArray.get());
+// }
+
+// Node::operator=(const Node& other)
+// {
+//     state = other.state;
+//     trueInLen = other.trueInLen;
+//     trueOutLen = other.trueOutLen;
+//     falseInLen = other.falseInLen;
+//     falseOutLen = other.falseOutLen;
+// }
+
+Node::Node(Node&& other)
     : state(other.state),
       trueInLen(other.trueInLen), trueOutLen(other.trueOutLen),
-      falseInLen(other.falseInLen), falseOutLen(other.falseOutLen)
-{
-    TLinkID trueLen = trueInLen + trueOutLen;
-    TLinkID falseLen = falseInLen + falseOutLen;
-    trueArray = new TLinkID[trueLen];
-    falseArray = new TLinkID[falseLen];
-    std::copy(other.trueArray, other.trueArray + trueLen, trueArray);
-    std::copy(other.falseArray, other.falseArray + falseLen, falseArray);
-}
+      trueArray(std::move(other.trueArray)),
+      falseInLen(other.falseInLen), falseOutLen(other.falseOutLen),
+      falseArray(std::move(other.falseArray)) {}
 
-Node& Node::operator=(const Node& other)
+Node::operator=(Node&& other)
 {
-    Node temp(other);
-    swap(*this, temp);
-    return *this;
-}
-
-Node::Node(Node&& other): Node()
-{
-    swap(*this, other);
-}
-
-Node& Node::operator=(Node&& other)
-{
-    swap(*this, other);
-    return *this;
-}
-
-void Node::swap(Node& first, Node& second)
-{
-    std::swap(first.state, second.state);
-    std::swap(first.trueInLen, second.trueInLen);
-    std::swap(first.trueOutLen, second.trueOutLen);
-    std::swap(first.trueArray, second.trueArray);
-    std::swap(first.falseInLen, second.falseInLen);
-    std::swap(first.falseOutLen, second.falseOutLen);
-    std::swap(first.falseArray, second.falseArray);
+    
 }
 
 Link::Link()
@@ -143,6 +135,48 @@ Engine& Engine::operator=(Engine&& other)
     linkVector = std::move(other.linkVector);
     return *this;
 }
+
+// Node::Node(const Node& other)
+//     : state(other.state),
+//       trueInLen(other.trueInLen), trueOutLen(other.trueOutLen),
+//       falseInLen(other.falseInLen), falseOutLen(other.falseOutLen)
+// {
+//     TLinkID trueLen = trueInLen + trueOutLen;
+//     TLinkID falseLen = falseInLen + falseOutLen;
+//     trueArray = new TLinkID[trueLen];
+//     falseArray = new TLinkID[falseLen];
+//     std::copy(other.trueArray, other.trueArray + trueLen, trueArray);
+//     std::copy(other.falseArray, other.falseArray + falseLen, falseArray);
+// }
+
+// Node& Node::operator=(const Node& other)
+// {
+//     Node temp(other);
+//     swap(*this, temp);
+//     return *this;
+// }
+
+// Node::Node(Node&& other): Node()
+// {
+//     swap(*this, other);
+// }
+
+// Node& Node::operator=(Node&& other)
+// {
+//     swap(*this, other);
+//     return *this;
+// }
+
+// void Node::swap(Node& first, Node& second)
+// {
+//     std::swap(first.state, second.state);
+//     std::swap(first.trueInLen, second.trueInLen);
+//     std::swap(first.trueOutLen, second.trueOutLen);
+//     std::swap(first.trueArray, second.trueArray);
+//     std::swap(first.falseInLen, second.falseInLen);
+//     std::swap(first.falseOutLen, second.falseOutLen);
+//     std::swap(first.falseArray, second.falseArray);
+// }
 
 // void Engine::swap(Engine& first, Engine& second)
 // {
