@@ -10,13 +10,15 @@ namespace Imply
     typedef unsigned int TNodeID;
     typedef unsigned int TLinkID;
     typedef unsigned char Equality;
-    static const State FALSE = 0;
-    static const State TRUE = 1;
-    static const State MAYBE = 2;
-    static const Equality LT = 0x00;
-    static const Equality LE = 0x01;
-    static const Equality GT = 0x02;
-    static const Equality GE = 0x03;
+    const State FALSE = 0;
+    const State TRUE = 1;
+    const State MAYBE = 2;
+    const Equality IS_EQUAL   = 0b00000001;
+    const Equality IS_GREATER = 0b00000010;
+    const Equality LE = 0          | IS_EQUAL;
+    const Equality LT = 0          | 0;
+    const Equality GE = IS_GREATER | IS_EQUAL;
+    const Equality GT = IS_GREATER | 0;
 
     class Node
     {
@@ -27,11 +29,17 @@ namespace Imply
         TLinkID falseInLen, falseOutLen;
         unique_ptr<TLinkID[]> falseArray;
     public:
+        Node(const Node& other);
+        Node& operator=(const Node& other);
+        Node(Node&& other) noexcept;
+        Node& operator=(Node&& other) noexcept;
+
         Node();
-        Node(const Node& other) = delete;
-        Node& operator=(const Node& other) = delete;
-        Node(Node&& other) = delete;
-        Node& operator=(Node&& other) = delete;
+        Node(
+            const vector<TLinkID>& trueInLinks,
+            const vector<TLinkID>& trueOutLinks,
+            const vector<TLinkID>& falseInLinks,
+            const vector<TLinkID>& falseOutLinks);
     };
 
     class Link
@@ -48,11 +56,19 @@ namespace Imply
         TNodeID trueInLen, falseInLen;
         unique_ptr<TNodeID[]> inArray;
     public:
+        Link(const Link& other);
+        Link& operator=(const Link& other);
+        Link(Link&& other) noexcept;
+        Link& operator=(Link&& other) noexcept;
+
         Link();
-        Link(const Link& other) = delete;
-        Link& operator=(const Link& other) = delete;
-        Link(Link&& other) = delete;
-        Link& operator=(Link&& other) = delete;
+        Link(
+            const vector<TNodeID>& trueInNodes, 
+            const vector<TNodeID>& falseInNodes,
+            Equality inEquality, TNodeID inLimit,
+            const vector<TNodeID>& trueOutNodes, 
+            const vector<TNodeID>& falseOutNodes,
+            Equality outEquality, TNodeID outLimit);
     };
 
     class Engine
@@ -64,7 +80,12 @@ namespace Imply
         Engine();
         Engine(const Engine& other);
         Engine& operator=(const Engine& other);
-        Engine(Engine&& other);
-        Engine& operator=(Engine&& other);
+        Engine(Engine&& other) noexcept;
+        Engine& operator=(Engine&& other) noexcept;
+
+        template<typename L, typename N>
+        Engine(L&& linkVector, N&& nodeVector);
+        template<typename L>
+        Engine(L&& linkVector, TNodeID nodeSize);
     };
 };
