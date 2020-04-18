@@ -203,12 +203,105 @@ Engine& Engine::operator=(Engine&& other)
 }
 
 template<typename L, typename N>
-Engine::Engine(L&& linkVector, N&& nodeVector)
-    : linkVector(linkVector), nodeVector(nodeVector) {}
+Engine::Engine(L&& links, N&& nodes)
+    : linkVector(links), nodeVector(nodes) {}
 
 template<typename L>
-Engine::Engine(L&& linkVector, TNodeID nodeSize)
-    : linkVector(linkVector), nodeVector(nodeSize)
+Engine::Engine(L&& links, TNodeID nodeSize)
+    : linkVector(links), nodeVector(nodeSize)
 {
+    // Find Lengths
+    for (const Link& link : linkVector) {
+        const TNodeID* inPtr = link.inArray.get();
+        const TNodeID* outPtr = link.outArray.get();
+        for (const TNodeID* trueInPtr = inPtr + link.trueInLen; inPtr < trueInPtr; inPtr++)
+            nodeVector[*inPtr].trueInLen++;
+        for (const TNodeID* falseInPtr = inPtr + link.falseInLen; inPtr < falseInPtr; inPtr++)
+            nodeVector[*inPtr].falseInLen++;
+        for (const TNodeID* trueOutPtr = outPtr + link.trueOutLen; outPtr < trueOutPtr; outPtr++)
+            nodeVector[*outPtr].trueOutLen++;
+        for (const TNodeID* falseOutPtr = outPtr + link.falseOutLen; outPtr < falseOutPtr; outPtr++)
+            nodeVector[*outPtr].falseOutLen++;
+    }
+    for (Node& node : nodeVector) {
+        // Allocate Array
+        node.trueArray = make_unique<TLink[]>(node.trueInLen + node.trueOutLen);
+        node.falseArray = make_unique<TLinkID[]>(node.falseInLen + node.falseOutLen);
+        // Lengths as Indices
+        node.trueOutLen = node.trueInLen;
+        node.falseOutLen = node.falseInLen;
+        node.trueInLen = 0;
+        node.falseInLen = 0;
+    }
+    // Fill Array
+    for (TLinkID i = 0; i < linkVector.size(); i++) {
+        const Link& link = linkVector[i];
+        const TNodeID* inPtr = link.inArray.get();
+        const TNodeID* outPtr = link.outArray.get();
+        for (const TNodeID* trueInPtr = inPtr + link.trueInLen; inPtr < trueInPtr; inPtr++) {
+            Node& node = nodeVector[*inPtr];
+            node.trueArray[node.trueInLen++] = i;
+        }
+        for (const TNodeID* falseInPtr = inPtr + link.falseInLen; inPtr < falseInPtr; inPtr++) {
+            Node& node = nodeVector[*inPtr];
+            node.falseArray[node.falseInLen++] = i;
+        }
+        for (const TNodeID* trueOutPtr = outPtr + link.trueOutLen; outPtr < trueOutPtr; outPtr++) {
+            Node& node = nodeVector[*outPtr];
+            node.trueArray[node.trueOutLen++] = i;
+        }
+        for (const TNodeID* falseOutPtr = outPtr + link.falseOutLen; outPtr < falseOutPtr; outPtr++) {
+            Node& node = nodeVector[*outPtr];
+            node.falseArray[node.falseOutLen++] = i;
+        }
+    }
+    // Indices to Lengths
+    for (Node& node : nodeVector) {
+        node.trueOutLen -= node.trueInLen;
+        node.falseOutLen -= node.falseInLen;
+    }
     
+    // vector<TLinkID> indexVector(nodeSize);
+    // for (TLinkID i = 0; i < linkVector.size(); i++) {
+    //     const Link& link = linkVector[i];
+    //     TNodeID* inPtr = link.inArray.get();
+    //     TNodeID* trueInPtr = inPtr + link.trueInLen;
+    //     for ( ; inPtr < trueInPtr; inPtr++, index++) {
+    //         TLinkID& index = indexVector[*inPtr];
+    //     }
+    //         nodeVector[*inPtr].inArray[index] = i;
+    // }
+    // vector<TLinkID*> linkPtrVector(nodeSize);
+    // for (TNodeID i = 0; i < nodeSize; i++)
+    //     linkPtrVector[i] = nodeVector[i].trueArray.get();
+    // for (TLinkID i = 0; i < linkVector.size(); i++) {
+    //     const Link& link = linkVector[i];
+    //     TNodeID* inPtr = link.inArray.get();
+    //     TNodeID* trueInPtr = inPtr + link.trueInLen;
+    //     for ( ; inPtr < trueInPtr; inPtr++)
+    //         *(linkPtrVector[*inPtr]++) = i;
+    // }
+    // for (TLinkID i = 0; i < linkVector.size(); i++) {
+    //     const Link& link = linkVector[i];
+    //     TNodeID* outPtr = link.outArray.get();
+    //     TNodeID* trueOutPtr = outPtr + link.trueOutLen;
+    //     for ( ; outPtr < trueOutPtr; outPtr++)
+    //         *(linkPtrVector[*outPtr]++) = i;
+    // }
+    // for (TNodeID i = 0; i < nodeSize; i++)
+    //     linkPtrVector[i] = nodeVector[i].falseArray.get();
+    // for (TLinkID i = 0; i < linkVector.size(); i++) {
+    //     const Link& link = linkVector[i];
+    //     TNodeID* inPtr = link.inArray.get() + link.trueInLen;
+    //     TNodeID* falseInPtr = inPtr + link.falseInLen;
+    //     for ( ; inPtr < falseInPtr; inPtr++)
+    //         *(linkPtrVector[*inPtr]++) = i;
+    // }
+    // for (TLinkID i = 0; i < linkVector.size(); i++) {
+    //     const Link& link = linkVector[i];
+    //     TNodeID* inPtr = link.inArray.get() + link.trueInLen;
+    //     TNodeID* falseInPtr = inPtr + link.falseInLen;
+    //     for ( ; inPtr < falseInPtr; inPtr++)
+    //         *(linkPtrVector[*inPtr]++) = i;
+    // }
 }

@@ -84,8 +84,8 @@ namespace Imply
         Engine& operator=(Engine&& other) noexcept;
 
         template<typename L, typename N>
-        Engine(L&& linkVector, N&& nodeVector);
+        Engine(L&& links, N&& nodes);
         template<typename L>
-        Engine(L&& linkVector, TNodeID nodeSize);
+        Engine(L&& links, TNodeID nodeSize);
     };
 };
