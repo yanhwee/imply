@@ -116,7 +116,18 @@ Link::Link(Link&& other)
 
 Link& Link::operator=(Link&& other)
 {
-    Link(std::move(other));
+    inCount = other.inCount; 
+    outCount = other.outCount;
+    inLimitA = other.inLimitA; 
+    outLimitA = other.outLimitA;
+    trueOutLen = other.trueOutLen; 
+    falseOutLen = other.falseOutLen;
+    outArray = std::move(other.outArray);    
+    inLimitB = other.inLimitB;
+    outLimitB = other.outLimitB;
+    trueInLen = other.trueInLen;
+    falseInLen = other.falseInLen;
+    inArray = std::move(other.inArray);
     return *this;
 }
 
