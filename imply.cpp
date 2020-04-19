@@ -1,5 +1,6 @@
 #include <vector>
 #include <memory>
+#include <cassert>
 #include "imply.h"
 using std::vector;
 using std::make_unique;
@@ -52,10 +53,8 @@ Node& Node::operator=(Node&& other)
 
 Node::Node()
     : state(MAYBE),
-      trueInLen(0), trueOutLen(0),
-      trueArray(make_unique<TLinkID[]>(0)),
-      falseInLen(0), falseOutLen(0),
-      falseArray(make_unique<TLinkID[]>(0)) {}
+      trueInLen(0), trueOutLen(0), trueArray(),
+      falseInLen(0), falseOutLen(0), falseArray() {}
 
 Node::Node(
     const vector<TLinkID>& trueInLinks, const vector<TLinkID>& trueOutLinks,
@@ -134,11 +133,9 @@ Link& Link::operator=(Link&& other)
 Link::Link()
     : inCount(0), outCount(0),
       inLimitA(0), outLimitA(0),
-      trueOutLen(0), falseOutLen(0),
-      outArray(make_unique<TLinkID[]>(0)),
+      trueOutLen(0), falseOutLen(0), outArray(),
       inLimitB(0), outLimitB(0),
-      trueInLen(0), falseInLen(0),
-      inArray(make_unique<TLinkID[]>(0)) {}
+      trueInLen(0), falseInLen(0), inArray() {}
 
 Link::Link(
     const vector<TNodeID>& trueInNodes, 
@@ -187,39 +184,96 @@ Link::Link(
     Link::outLimitB = Link::outLimitA + 1;
 }
 
+bool Link::isJustConditional() const
+{
+    bool g_e = inCount > inLimitA && outCount == outLimitA;
+    bool e_ge = inCount == inLimitA && outCount >= outLimitA;
+    return g_e || e_ge;
+}
+
+bool Link::isJustContrapositive() const
+{
+    bool g_e = inCount > inLimitB && outCount == outLimitB;
+    bool e_ge = inCount == inLimitB && outCount >= outLimitB;
+    return g_e || e_ge;
+}
+
+bool Link::isJustNotConditional() const
+{
+    bool l_e = inCount < inLimitA && outCount == outLimitA;
+    bool e_le = inCount == inLimitA && outCount <= outLimitA;
+    return l_e && e_le;
+}
+
+bool Link::isJustNotContrapositive() const
+{
+    bool l_e = inCount < inLimitB && outCount == outLimitB;
+    bool e_le = inCount == inLimitB && outCount <= outLimitB;
+    return l_e && e_le;
+}
+
 Engine::Engine()
-    : nodeVector(vector<Node>()),
-      linkVector(vector<Link>()) {}
+    : nodeVector(), linkVector(),
+      nodeIDArray(),
+      nodeIDArrayPtrEnd(nodeIDArray.get() + nodeVector.size()),
+      trueNodeIDPtr(nodeIDArray.get()),
+      falseNodeIDPtr(nodeIDArrayPtrEnd) {}
 
 Engine::Engine(const Engine& other)
-    : nodeVector(nodeVector), 
-      linkVector(linkVector) {}
+    : nodeVector(other.nodeVector),
+      linkVector(other.linkVector)
+{
+    nodeIDArray = make_unique<TNodeID[]>(nodeVector.size());
+    nodeIDArrayPtrEnd = nodeIDArray.get() + (other.nodeIDArray.get() - other.nodeIDArrayPtrEnd);
+    trueNodeIDPtr = nodeIDArray.get() + (other.nodeIDArray.get() - other.trueNodeIDPtr);
+    falseNodeIDPtr = nodeIDArray.get() + (other.nodeIDArray.get() - other.falseNodeIDPtr);
+    std::copy(other.nodeIDArray.get(), other.trueNodeIDPtr, nodeIDArray.get());
+    std::copy(other.falseNodeIDPtr, other.nodeIDArrayPtrEnd, falseNodeIDPtr);
+}
 
 Engine& Engine::operator=(const Engine& other)
 {
     nodeVector = other.nodeVector;
     linkVector = other.linkVector;
+    nodeIDArray = make_unique<TNodeID[]>(nodeVector.size());
+    nodeIDArrayPtrEnd = nodeIDArray.get() + (other.nodeIDArray.get() - other.nodeIDArrayPtrEnd);
+    trueNodeIDPtr = nodeIDArray.get() + (other.nodeIDArray.get() - other.trueNodeIDPtr);
+    falseNodeIDPtr = nodeIDArray.get() + (other.nodeIDArray.get() - other.falseNodeIDPtr);
+    std::copy(other.nodeIDArray.get(), other.trueNodeIDPtr, nodeIDArray.get());
+    std::copy(other.falseNodeIDPtr, other.nodeIDArrayPtrEnd, falseNodeIDPtr);
     return *this;
 }
 
 Engine::Engine(Engine&& other)
     : nodeVector(std::move(other.nodeVector)),
-      linkVector(std::move(other.linkVector)) {}
+      linkVector(std::move(other.linkVector)),
+      nodeIDArray(std::move(other.nodeIDArray)),
+      nodeIDArrayPtrEnd(other.nodeIDArrayPtrEnd),
+      trueNodeIDPtr(other.trueNodeIDPtr),
+      falseNodeIDPtr(other.falseNodeIDPtr) {}
 
 Engine& Engine::operator=(Engine&& other)
 {
     nodeVector = std::move(other.nodeVector);
     linkVector = std::move(other.linkVector);
+    nodeIDArray = std::move(other.nodeIDArray);
+    nodeIDArrayPtrEnd = other.nodeIDArrayPtrEnd;
+    trueNodeIDPtr = other.trueNodeIDPtr;
+    falseNodeIDPtr = other.falseNodeIDPtr;
     return *this;
 }
 
 template<typename L, typename N>
 Engine::Engine(L&& links, N&& nodes)
-    : linkVector(links), nodeVector(nodes) {}
+    : linkVector(links),
+      nodeVector(nodes),
+      nodeIDVector(nodes.size()) {}
 
 template<typename L>
 Engine::Engine(L&& links, TNodeID nodeSize)
-    : linkVector(links), nodeVector(nodeSize)
+    : linkVector(links),
+      nodeVector(nodeSize),
+      nodeIDVector(nodes.size())
 {
     // Find Lengths
     for (const Link& link : linkVector) {
@@ -271,48 +325,199 @@ Engine::Engine(L&& links, TNodeID nodeSize)
         node.trueOutLen -= node.trueInLen;
         node.falseOutLen -= node.falseInLen;
     }
-    
-    // vector<TLinkID> indexVector(nodeSize);
-    // for (TLinkID i = 0; i < linkVector.size(); i++) {
-    //     const Link& link = linkVector[i];
-    //     TNodeID* inPtr = link.inArray.get();
-    //     TNodeID* trueInPtr = inPtr + link.trueInLen;
-    //     for ( ; inPtr < trueInPtr; inPtr++, index++) {
-    //         TLinkID& index = indexVector[*inPtr];
-    //     }
-    //         nodeVector[*inPtr].inArray[index] = i;
-    // }
-    // vector<TLinkID*> linkPtrVector(nodeSize);
-    // for (TNodeID i = 0; i < nodeSize; i++)
-    //     linkPtrVector[i] = nodeVector[i].trueArray.get();
-    // for (TLinkID i = 0; i < linkVector.size(); i++) {
-    //     const Link& link = linkVector[i];
-    //     TNodeID* inPtr = link.inArray.get();
-    //     TNodeID* trueInPtr = inPtr + link.trueInLen;
-    //     for ( ; inPtr < trueInPtr; inPtr++)
-    //         *(linkPtrVector[*inPtr]++) = i;
-    // }
-    // for (TLinkID i = 0; i < linkVector.size(); i++) {
-    //     const Link& link = linkVector[i];
-    //     TNodeID* outPtr = link.outArray.get();
-    //     TNodeID* trueOutPtr = outPtr + link.trueOutLen;
-    //     for ( ; outPtr < trueOutPtr; outPtr++)
-    //         *(linkPtrVector[*outPtr]++) = i;
-    // }
-    // for (TNodeID i = 0; i < nodeSize; i++)
-    //     linkPtrVector[i] = nodeVector[i].falseArray.get();
-    // for (TLinkID i = 0; i < linkVector.size(); i++) {
-    //     const Link& link = linkVector[i];
-    //     TNodeID* inPtr = link.inArray.get() + link.trueInLen;
-    //     TNodeID* falseInPtr = inPtr + link.falseInLen;
-    //     for ( ; inPtr < falseInPtr; inPtr++)
-    //         *(linkPtrVector[*inPtr]++) = i;
-    // }
-    // for (TLinkID i = 0; i < linkVector.size(); i++) {
-    //     const Link& link = linkVector[i];
-    //     TNodeID* inPtr = link.inArray.get() + link.trueInLen;
-    //     TNodeID* falseInPtr = inPtr + link.falseInLen;
-    //     for ( ; inPtr < falseInPtr; inPtr++)
-    //         *(linkPtrVector[*inPtr]++) = i;
-    // }
 }
+
+void Engine::selfAssert(bool strong) {
+    if (strong) {
+        assert(nodeVector.size() == nodeVector.capacity());
+        assert(linkVector.size() == linkVector.capacity());
+    }
+    assert(trueNodeIDPtr == nodeIDArray.get());
+    assert(falseNodeIDPtr == nodeIDArray.get() + nodeVector.size());
+}
+
+void Engine::constrain(TNodeID nodeID, State state)
+{
+    while (true) {
+        for ( ; trueNodeIDPtr >= nodeIDArray.get(); trueNodeIDPtr--) {
+            updateNodeArray(*trueNodeIDPtr, TRUE);
+        }
+        if (!(falseNodeIDPtr < nodeIDArrayPtrEnd)) break;
+        for ( ; falseNodeIDPtr < nodeIDArrayPtrEnd; falseNodeIDPtr++) {
+            updateNodeArray(*falseNodeIDPtr, FALSE);
+        }
+        if (!(trueNodeIDPtr >= nodeIDArray.get())) break;
+    }
+}
+
+void Engine::updateNodeArray(const TNodeID nodeID, State state)
+{
+    assert(state == TRUE || state == FALSE);
+    const Node& node = nodeVector[nodeID];
+    if (state == TRUE)
+        updateNodeArray(node.trueArray, node.trueInLen, node.trueOutLen);
+    else if (state == FALSE)
+        updateNodeArray(node.falseArray, node.falseInLen, node.falseOutLen);
+}
+
+void Engine::resetNodeArray(const TNodeID nodeID, State state)
+{
+    assert(state == TRUE || state == FALSE);
+    const Node& node = nodeVector[nodeID];
+    if (state == TRUE)
+        resetNodeArray(node.trueArray, node.trueInLen, node.trueOutLen);
+    else if (state == FALSE)
+        resetNodeArray(node.falseArray, node.falseInLen, node.falseOutLen);
+}
+
+void Engine::updateNodeArray(const unique_ptr<TLinkID[]>& nodeArray, const TLinkID inLen, const TLinkID outLen)
+{
+    TLinkID* ptr = nodeArray.get();
+    for (TLinkID* inPtr = ptr + inLen; ptr < inPtr; ptr++)
+        updateLink(*ptr, IN);
+    for (TLinkID* outPtr = ptr + outLen; ptr < outPtr; ptr++)
+        updateLink(*ptr, OUT);
+}
+
+void Engine::resetNodeArray(const unique_ptr<TLinkID[]>& nodeArray, const TLinkID inLen, const TLinkID outLen)
+{
+    TLinkID* ptr = nodeArray.get();
+    for (TLinkID* inPtr = ptr + inLen; ptr < inPtr; ptr++)
+        resetLink(*ptr, IN);
+    for (TLinkID* outPtr = ptr + outLen; ptr < outPtr; ptr++)
+        resetLink(*ptr, OUT);
+}
+
+void Engine::updateLink(const TLinkID linkID, Side side) {
+    assert(side == IN || side == OUT);
+    Link& link = linkVector[linkID];
+    if (side == IN)
+        link.inCount++;
+    else if (side == OUT)
+        link.outCount++;
+    updateLinkArray(link);
+}
+
+void Engine::resetLink(const TLinkID linkID, Side side)
+{
+    assert(side == IN || side == OUT);
+    Link& link = linkVector[linkID];
+    if (side == IN)
+        link.inCount--;
+    else if (side == OUT)
+        link.outCount--;
+    resetLinkArray(link);
+}
+
+void Engine::updateLinkArray(const Link& link)
+{
+    if (link.isJustConditional())
+        updateLinkArray(link.outArray, link.trueOutLen, link.falseOutLen);
+    else if (link.isJustContrapositive())
+        updateLinkArray(link.inArray, link.trueInLen, link.falseInLen);
+}
+
+void Engine::resetLinkArray(const Link& link)
+{
+    if (link.isJustNotConditional())
+        resetLinkArray(link.outArray, link.trueOutLen, link.falseOutLen);
+    else if (link.isJustNotContrapositive())
+        resetLinkArray(link.inArray, link.trueInLen, link.falseInLen);
+}
+
+void Engine::updateLinkArray(const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen)
+{
+    const TNodeID* ptr = linkArray.get();
+    for (const TNodeID* truePtr = ptr + trueLen; ptr < truePtr; ptr++)
+        updateNode(*ptr, TRUE);
+    for (const TNodeID* falsePtr = ptr + falseLen; ptr < falsePtr; ptr++)
+        updateNode(*ptr, FALSE);
+}
+
+void Engine::resetLinkArray(const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen)
+{
+    const TNodeID* ptr = linkArray.get();
+    for (const TNodeID* truePtr = ptr + trueLen; ptr < truePtr; ptr++)
+        resetNode(*ptr, TRUE);
+    for (const TNodeID* falsePtr = ptr + falseLen; ptr < falsePtr; ptr++)
+        resetNode(*ptr, FALSE);
+}
+
+void Engine::updateNode(const TNodeID nodeID, const State state)
+{
+    assert(state == TRUE || state == FALSE);
+    Node& node = nodeVector[nodeID];
+    assert(node.state != (1 - state));
+    if (node.state == MAYBE) {
+        node.state = state;
+        if (state == TRUE)
+            *(trueNodeIDPtr++) = nodeID;
+        else if (state == FALSE)
+            *(falseNodeIDPtr--) = nodeID;
+    }
+}
+
+void Engine::resetNode(const TNodeID nodeID, const State state)
+{
+    assert(state == TRUE || state == FALSE);
+    Node& node = nodeVector[nodeID];
+    assert(node.state != (1 - state));
+    if (node.state == state) {
+        node.state == MAYBE;
+        if (state == TRUE)
+            *(trueNodeIDPtr++) = nodeID;
+        else if (state == FALSE)
+            *(falseNodeIDPtr--) = nodeID;
+    }
+}
+
+// void Engine::updateNodeArray(const Node& node, State state)
+// {
+//     assert(state == TRUE || state == FALSE);
+//     if (state == TRUE)
+//         updateNodeArray(node.trueArray, node.trueInLen, node.trueOutLen);
+//     else if (state == FALSE)
+//         updateNodeArray(node.falseArray, node.falseInLen, node.falseOutLen);
+// }
+
+// void Engine::constrain(TNodeID nodeID, State state)
+// {
+//     while (true) {
+//         for ( ; trueNodeIDPtr >= nodeIDArray.get(); trueNodeIDPtr--) {
+//             const Node& node = nodeVector[*trueNodeIDPtr];
+//             TLinkID* truePtr = node.trueArray.get();
+//             for (TLinkID* trueInPtr = truePtr + node.trueInLen; truePtr < trueInPtr; truePtr++) {
+//                 Link& link = linkVector[*truePtr];
+//                 link.inCount++;
+//                 // Conditional
+//                 if (link.inCount > link.inLimitA && link.outCount == link.outLimitA || 
+//                     link.inCount == link.inLimitA && link.outCount >= link.outLimitA) {
+//                     const TNodeID* outPtr = link.outArray.get();
+//                     for (const TNodeID* trueOutPtr = outPtr + link.trueOutLen; outPtr < trueOutPtr; outPtr++) {
+//                         const TNodeID nodeID = *outPtr;
+//                         Node& node = nodeVector[nodeID];
+//                         assert(node.state != FALSE);
+//                         if (node.state == MAYBE) {
+//                             node.state = TRUE;
+//                             *(trueNodeIDPtr++) = nodeID;
+//                         }
+//                     }
+//                     for (const TNodeID* falseOutPtr = outPtr + link.falseOutLen; outPtr < falseOutPtr; outPtr++) {
+//                         const TNodeID nodeID = *outPtr;
+//                         Node& node = nodeVector[nodeID];
+//                         assert(node.state != TRUE);
+//                         if (node.state == MAYBE) {
+//                             node.state = FALSE;
+//                             *(falseNodeIDPtr--) = nodeID;
+//                         }
+//                     }
+//                 }
+//                 // Contrapositive
+//                 if (link.inCount > link.inLimitB && link.outCount == link.outLimitB || 
+//                     link.inCount == link.inLimitB && link.outCount >= link.outLimitB) {
+                    
+//                 }
+//             }
+//         }
+//     }
+// }

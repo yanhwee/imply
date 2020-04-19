@@ -7,12 +7,15 @@ using std::unique_ptr;
 namespace Imply
 {
     typedef unsigned char State;
+    typedef unsigned char Side;
     typedef unsigned int TNodeID;
     typedef unsigned int TLinkID;
     typedef unsigned char Equality;
     const State FALSE = 0;
     const State TRUE = 1;
     const State MAYBE = 2;
+    const Side IN = 0;
+    const Side OUT = 1;
     const Equality IS_EQUAL   = 0b00000001;
     const Equality IS_GREATER = 0b00000010;
     const Equality LE = 0          | IS_EQUAL;
@@ -23,6 +26,7 @@ namespace Imply
     class Node
     {
     private:
+        friend class Engine;
         State state;
         TLinkID trueInLen, trueOutLen;
         unique_ptr<TLinkID[]> trueArray;
@@ -45,6 +49,7 @@ namespace Imply
     class Link
     {
     private:
+        friend class Engine;
         // Shared
         TNodeID inCount, outCount;
         // Conditional
@@ -69,6 +74,11 @@ namespace Imply
             const vector<TNodeID>& trueOutNodes, 
             const vector<TNodeID>& falseOutNodes,
             Equality outEquality, TNodeID outLimit);
+    private:
+        bool isJustConditional() const;
+        bool isJustContrapositive() const;
+        bool isJustNotConditional() const;
+        bool isJustNotContrapositive() const;
     };
 
     class Engine
@@ -76,6 +86,10 @@ namespace Imply
     private:
         vector<Node> nodeVector;
         vector<Link> linkVector;
+        unique_ptr<TNodeID[]> nodeIDArray;
+        TNodeID* nodeIDArrayPtrEnd;
+        TNodeID* trueNodeIDPtr;
+        TNodeID* falseNodeIDPtr;
     public:
         Engine();
         Engine(const Engine& other);
@@ -87,5 +101,30 @@ namespace Imply
         Engine(L&& links, N&& nodes);
         template<typename L>
         Engine(L&& links, TNodeID nodeSize);
+
+        void selfAssert(bool strong = false);
+        void constrain(TNodeID nodeID, State state);
+
+    private:
+        void updateNodeArray(TNodeID nodeID, State state);
+        void resetNodeArray(TNodeID nodeID, State state);
+        void updateNodeArray(const unique_ptr<TLinkID[]>& nodeArray, TLinkID inLen, TLinkID outLen);
+        void resetNodeArray(const unique_ptr<TLinkID[]>& nodeArray, TLinkID inLen, TLinkID outLen);
+        
+        void updateLink(TLinkID linkID, Side side);
+        void resetLink(TLinkID linkID, Side side);
+
+        void updateLinkArray(const Link& link);
+        void resetLinkArray(const Link& link);
+        void updateLinkArray(const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen);
+        void resetLinkArray(const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen);
+
+        void updateNode(TNodeID nodeID, State state);
+        void resetNode(TNodeID nodeID, State state);
+
+        // void updateNodeArray(const Node& node, State state);
+
+        // void updateLinkArray(const Link& link, Side side);
+        // void resetLinkArray(const Link& link, Side side);
     };
-};
+};;
