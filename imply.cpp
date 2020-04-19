@@ -419,7 +419,7 @@ bool Engine::updateNode(const TNodeID nodeID, const State state, const bool rese
 {
     assert(state == TRUE || state == FALSE);
     Node& node = nodeVector[nodeID];
-    if (node.state != (1 - state)) return false;
+    if (node.state == (1 - state)) return false;
     bool checkState, newState;
     if (reset) {
         checkState = state;
