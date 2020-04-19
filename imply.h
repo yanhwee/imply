@@ -86,8 +86,11 @@ namespace Imply
     private:
         vector<Node> nodeVector;
         vector<Link> linkVector;
+        unique_ptr<TNodeID[]> nodeIDArray;
+        TNodeID* nodeIDArrayPtrEnd;
+        TNodeID* trueNodeIDPtr;
+        TNodeID* falseNodeIDPtr;
     public:
-
         Engine();
         Engine(const Engine& other);
         Engine& operator=(const Engine& other);
@@ -100,32 +103,28 @@ namespace Imply
         Engine(L&& links, TNodeID nodeSize);
 
         void selfAssert(bool strong = false);
-        void constrain(TNodeID nodeID, State state);
-
+        void constrain(TNodeID nodeID, State state, bool reset);
     private:
-        struct NodeIDArray // Parameter Object
-        {
-            unique_ptr<TNodeID[]> ptr;
-            TNodeID* ptrEnd;
-            TNodeID* truePtr;
-            TNodeID* falsePtr;
-            bool forReset;
-            NodeIDArray(TNodeID nodeSize);
-            NodeIDArray(const NodeIDArray& other) = delete;
-            NodeIDArray& operator=(const NodeIDArray& other) = delete;
-            NodeIDArray(NodeIDArray&& other) = delete;
-            NodeIDArray& operator=(NodeIDArray&& other) = delete;
-        };
+        // struct NodeIDArray // Parameter Object
+        // {
+        //     unique_ptr<TNodeID[]> ptr;
+        //     TNodeID* ptrEnd;
+        //     TNodeID* truePtr;
+        //     TNodeID* falsePtr;
+        //     bool forReset;
+        //     NodeIDArray(TNodeID nodeSize);
+        //     NodeIDArray(const NodeIDArray& other) = delete;
+        //     NodeIDArray& operator=(const NodeIDArray& other) = delete;
+        //     NodeIDArray(NodeIDArray&& other) = delete;
+        //     NodeIDArray& operator=(NodeIDArray&& other) = delete;
+        // };
         
-        void updateNodeArray(TNodeID nodeID, State state, NodeIDArray& nodeIDArray);
-        void updateNodeArray(const unique_ptr<TLinkID[]>& nodeArray, TLinkID inLen, TLinkID outLen, NodeIDArray& nodeIDArray);
-        
-        void updateLink(TLinkID linkID, Side side, NodeIDArray& nodeIDArray);
-
-        void updateLinkArray(const Link& link, NodeIDArray& nodeIDArray);
-        void updateLinkArray(const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen, NodeIDArray& nodeIDArray);
-
-        void updateNode(TNodeID nodeID, State state, NodeIDArray& nodeIDArray);
+        bool updateNodeArray(TNodeID nodeID, State state, bool reset);
+        bool updateNodeArray(const unique_ptr<TLinkID[]>& nodeArray, TLinkID inLen, TLinkID outLen, bool reset);
+        bool updateLink(TLinkID linkID, Side side, bool reset);
+        bool updateLinkArray(const Link& link, bool reset);
+        bool updateLinkArray(const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen, bool reset);
+        bool updateNode(TNodeID nodeID, State state, bool reset);
 
         // void updateNodeArray(const Node& node, State state);
         // void updateLinkArray(const Link& link, Side side);

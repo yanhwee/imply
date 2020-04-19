@@ -213,39 +213,68 @@ bool Link::isJustNotContrapositive() const
 }
 
 Engine::Engine()
-    : nodeVector(), linkVector() {}
+    : nodeVector(), linkVector(),
+      nodeIDArray(),
+      nodeIDArrayPtrEnd(nodeIDArray.get() + nodeVector.size()),
+      trueNodeIDPtr(nodeIDArray.get()),
+      falseNodeIDPtr(nodeIDArrayPtrEnd)  {}
 
 Engine::Engine(const Engine& other)
     : nodeVector(other.nodeVector),
-      linkVector(other.linkVector) {}
+      linkVector(other.linkVector)
+{
+    nodeIDArray = make_unique<TNodeID[]>(nodeVector.size());
+    nodeIDArrayPtrEnd = nodeIDArray.get() + (other.nodeIDArray.get() - other.nodeIDArrayPtrEnd);
+    trueNodeIDPtr = nodeIDArray.get() + (other.nodeIDArray.get() - other.trueNodeIDPtr);
+    falseNodeIDPtr = nodeIDArray.get() + (other.nodeIDArray.get() - other.falseNodeIDPtr);
+    std::copy(other.nodeIDArray.get(), other.trueNodeIDPtr, nodeIDArray.get());
+    std::copy(other.falseNodeIDPtr, other.nodeIDArrayPtrEnd, falseNodeIDPtr);
+}
 
 Engine& Engine::operator=(const Engine& other)
 {
     nodeVector = other.nodeVector;
     linkVector = other.linkVector;
+    nodeIDArray = make_unique<TNodeID[]>(nodeVector.size());
+    nodeIDArrayPtrEnd = nodeIDArray.get() + (other.nodeIDArray.get() - other.nodeIDArrayPtrEnd);
+    trueNodeIDPtr = nodeIDArray.get() + (other.nodeIDArray.get() - other.trueNodeIDPtr);
+    falseNodeIDPtr = nodeIDArray.get() + (other.nodeIDArray.get() - other.falseNodeIDPtr);
+    std::copy(other.nodeIDArray.get(), other.trueNodeIDPtr, nodeIDArray.get());
+    std::copy(other.falseNodeIDPtr, other.nodeIDArrayPtrEnd, falseNodeIDPtr);
+
     return *this;
 }
 
 Engine::Engine(Engine&& other) noexcept
     : nodeVector(std::move(other.nodeVector)),
-      linkVector(std::move(other.linkVector)) {}
+      linkVector(std::move(other.linkVector)),
+      nodeIDArray(std::move(other.nodeIDArray)),
+      nodeIDArrayPtrEnd(other.nodeIDArrayPtrEnd),
+      trueNodeIDPtr(other.trueNodeIDPtr),
+      falseNodeIDPtr(other.falseNodeIDPtr) {}
 
 Engine& Engine::operator=(Engine&& other) noexcept
 {
     nodeVector = std::move(other.nodeVector);
     linkVector = std::move(other.linkVector);
+    nodeIDArray = std::move(other.nodeIDArray);
+    nodeIDArrayPtrEnd = other.nodeIDArrayPtrEnd;
+    trueNodeIDPtr = other.trueNodeIDPtr;
+    falseNodeIDPtr = other.falseNodeIDPtr;
     return *this;
 }
 
 template<typename L, typename N>
 Engine::Engine(L&& links, N&& nodes)
     : linkVector(links),
-      nodeVector(nodes) {}
+      nodeVector(nodes),
+      nodeIDArray(nodeVector.size()) {}
 
 template<typename L>
 Engine::Engine(L&& links, TNodeID nodeSize)
     : linkVector(links),
-      nodeVector(nodeSize)
+      nodeVector(nodeSize),
+      nodeIDArray(nodeVector.size())
 {
     // Find Lengths
     for (const Link& link : linkVector) {
@@ -308,97 +337,91 @@ void Engine::selfAssert(bool strong) {
     // assert(falseNodeIDPtr == nodeIDArray.get() + nodeVector.size());
 }
 
-void Engine::constrain(TNodeID nodeID, State state)
+void Engine::constrain(TNodeID nodeID, State state, const bool reset)
 {
-    NodeIDArray nodeIDArray(nodeVector.size());
     while (true) {
-        for ( ; nodeIDArray.truePtr >= nodeIDArray.ptr.get(); nodeIDArray.truePtr--)
-            updateNodeArray(*nodeIDArray.truePtr, TRUE, nodeIDArray);
+        for ( ; trueNodeIDPtr >= nodeIDArray.get(); trueNodeIDPtr--)
+            updateNodeArray(*trueNodeIDPtr, TRUE, reset);
 
-        if (!(nodeIDArray.falsePtr < nodeIDArray.ptr.get())) break;
+        if (!(falseNodeIDPtr < nodeIDArrayPtrEnd)) break;
 
-        for ( ; nodeIDArray.falsePtr < nodeIDArray.ptr.get(); nodeIDArray.falsePtr++)
-            updateNodeArray(*nodeIDArray.falsePtr, FALSE, nodeIDArray);
+        for ( ; falseNodeIDPtr < nodeIDArrayPtrEnd; falseNodeIDPtr++)
+            updateNodeArray(*falseNodeIDPtr, FALSE, reset);
 
-        if (!(nodeIDArray.truePtr >= nodeIDArray.ptr.get())) break;
+        if (!(trueNodeIDPtr >= nodeIDArray.get())) break;
     }
 }
 
-Engine::NodeIDArray::NodeIDArray(TNodeID nodeSize)
-    : ptr(make_unique<TNodeID[]>(nodeSize)),
-      ptrEnd(ptr.get() + nodeSize),
-      truePtr(ptr.get()), falsePtr(ptrEnd),
-      forReset(false) {}
-
-void Engine::updateNodeArray(const TNodeID nodeID, const State state, NodeIDArray& nodeIDArray)
+bool Engine::updateNodeArray(const TNodeID nodeID, const State state, const bool reset)
 {
     assert(state == TRUE || state == FALSE);
     const Node& node = nodeVector[nodeID];
     if (state == TRUE)
-        updateNodeArray(node.trueArray, node.trueInLen, node.trueOutLen, nodeIDArray);
-    else if (state == FALSE)
-        updateNodeArray(node.falseArray, node.falseInLen, node.falseOutLen, nodeIDArray);
+        return updateNodeArray(node.trueArray, node.trueInLen, node.trueOutLen, reset);
+    else
+        return updateNodeArray(node.falseArray, node.falseInLen, node.falseOutLen, reset);
 }
 
-void Engine::updateNodeArray(const unique_ptr<TLinkID[]>& nodeArray, const TLinkID inLen, const TLinkID outLen, NodeIDArray& nodeIDArray)
+bool Engine::updateNodeArray(const unique_ptr<TLinkID[]>& nodeArray, const TLinkID inLen, const TLinkID outLen, const bool reset)
 {
     TLinkID* ptr = nodeArray.get();
     for (TLinkID* inPtr = ptr + inLen; ptr < inPtr; ptr++)
-        updateLink(*ptr, IN, nodeIDArray);
+        if (!updateLink(*ptr, IN, reset)) return false;
     for (TLinkID* outPtr = ptr + outLen; ptr < outPtr; ptr++)
-        updateLink(*ptr, OUT, nodeIDArray);
+        if (!updateLink(*ptr, OUT, reset)) return false;
+    return true;
 }
 
-void Engine::updateLink(const TLinkID linkID, Side side, NodeIDArray& nodeIDArray) {
+bool Engine::updateLink(const TLinkID linkID, Side side, const bool reset) {
     assert(side == IN || side == OUT);
     Link& link = linkVector[linkID];
     if (side == IN) {
-        if (nodeIDArray.forReset)
+        if (reset)
             link.inCount--;
         else
             link.inCount++;
-    } 
-    else if (side == OUT) {
-        if (nodeIDArray.forReset)
+    } else {
+        if (reset)
             link.outCount--;
         else
             link.outCount++;
     }
-    updateLinkArray(link, nodeIDArray);
+    return updateLinkArray(link, reset);
 }
 
-void Engine::updateLinkArray(const Link& link, NodeIDArray& nodeIDArray)
+bool Engine::updateLinkArray(const Link& link, const bool reset)
 {
-    if (nodeIDArray.forReset) {
+    if (reset) {
         if (link.isJustNotConditional())
-            updateLinkArray(link.outArray, link.trueOutLen, link.falseOutLen, nodeIDArray);
+            return updateLinkArray(link.outArray, link.trueOutLen, link.falseOutLen, reset);
         else if (link.isJustNotContrapositive())
-            updateLinkArray(link.inArray, link.trueInLen, link.falseInLen, nodeIDArray);
-    } 
-    else {
+            return updateLinkArray(link.inArray, link.trueInLen, link.falseInLen, reset);
+    } else {
         if (link.isJustConditional())
-            updateLinkArray(link.outArray, link.trueOutLen, link.falseOutLen, nodeIDArray);
+            return updateLinkArray(link.outArray, link.trueOutLen, link.falseOutLen, reset);
         else if (link.isJustContrapositive())
-            updateLinkArray(link.inArray, link.trueInLen, link.falseInLen, nodeIDArray);
+            return updateLinkArray(link.inArray, link.trueInLen, link.falseInLen, reset);
     }
+    return true;
 }
 
-void Engine::updateLinkArray(const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen, NodeIDArray& nodeIDArray)
+bool Engine::updateLinkArray(const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen, const bool reset)
 {
     const TNodeID* ptr = linkArray.get();
     for (const TNodeID* truePtr = ptr + trueLen; ptr < truePtr; ptr++)
-        updateNode(*ptr, TRUE, nodeIDArray);
+        if (!updateNode(*ptr, TRUE, reset)) return false;
     for (const TNodeID* falsePtr = ptr + falseLen; ptr < falsePtr; ptr++)
-        updateNode(*ptr, FALSE, nodeIDArray);
+        if (!updateNode(*ptr, FALSE, reset)) return false;
+    return true;
 }
 
-void Engine::updateNode(const TNodeID nodeID, const State state, NodeIDArray& nodeIDArray)
+bool Engine::updateNode(const TNodeID nodeID, const State state, const bool reset)
 {
     assert(state == TRUE || state == FALSE);
     Node& node = nodeVector[nodeID];
-    assert(node.state != (1 - state));
+    if (node.state != (1 - state)) return false;
     bool checkState, newState;
-    if (nodeIDArray.forReset) {
+    if (reset) {
         checkState = state;
         newState = MAYBE;
     } else {
@@ -408,8 +431,9 @@ void Engine::updateNode(const TNodeID nodeID, const State state, NodeIDArray& no
     if (node.state == checkState) {
         node.state = newState;
         if (state == TRUE)
-            *(nodeIDArray.truePtr++) = nodeID;
+            *(trueNodeIDPtr++) = nodeID;
         else
-            *(nodeIDArray.falsePtr--) = nodeID;
+            *(falseNodeIDPtr--) = nodeID;
     }
+    return true;
 }
