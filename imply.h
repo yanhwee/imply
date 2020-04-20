@@ -103,31 +103,14 @@ namespace Imply
         Engine(L&& links, TNodeID nodeSize);
 
         void selfAssert(bool strong = false);
-        void constrain(TNodeID nodeID, State state, bool reset);
+        bool constrain(TNodeID nodeID, State state, bool reset);
+        bool backtrack();
     private:
-        // struct NodeIDArray // Parameter Object
-        // {
-        //     unique_ptr<TNodeID[]> ptr;
-        //     TNodeID* ptrEnd;
-        //     TNodeID* truePtr;
-        //     TNodeID* falsePtr;
-        //     bool forReset;
-        //     NodeIDArray(TNodeID nodeSize);
-        //     NodeIDArray(const NodeIDArray& other) = delete;
-        //     NodeIDArray& operator=(const NodeIDArray& other) = delete;
-        //     NodeIDArray(NodeIDArray&& other) = delete;
-        //     NodeIDArray& operator=(NodeIDArray&& other) = delete;
-        // };
-        
         bool updateNodeArray(TNodeID nodeID, State state, bool reset);
         bool updateNodeArray(const unique_ptr<TLinkID[]>& nodeArray, TLinkID inLen, TLinkID outLen, bool reset);
         bool updateLink(TLinkID linkID, Side side, bool reset);
         bool updateLinkArray(const Link& link, bool reset);
         bool updateLinkArray(const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen, bool reset);
         bool updateNode(TNodeID nodeID, State state, bool reset);
-
-        // void updateNodeArray(const Node& node, State state);
-        // void updateLinkArray(const Link& link, Side side);
-        // void resetLinkArray(const Link& link, Side side);
     };
 };;
