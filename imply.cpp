@@ -367,9 +367,9 @@ bool Engine::constrain(const TNodeID nodeID, const State state, const bool reset
 {
     TNodeID* truePtrStart = trueNodeIDPtr;
     TNodeID* truePtr = truePtrStart;
+    if (!updateNode(nodeID, state, reset)) return false;
     TNodeID* falsePtrStart = falseNodeIDPtr;
     TNodeID* falsePtr = falsePtrStart;
-    if (!updateNode(nodeID, state, reset)) return false;
 
     while (true) {
         for ( ; truePtr < trueNodeIDPtr; truePtr++) {
@@ -388,14 +388,14 @@ bool Engine::constrain(const TNodeID nodeID, const State state, const bool reset
                 return false;
             }
         }
-        if (!(--falsePtr >= falseNodeIDPtr)) break;
+        if (!(falsePtr >= falseNodeIDPtr)) break;
 
         for ( ; falsePtr >= falseNodeIDPtr; falsePtr--) {
             if (!updateNodeArray(*falsePtr, FALSE, reset, true)) {
-                for ( ; falsePtr > falsePtrStart; falsePtr--) {
+                for ( ; falsePtr < falsePtrStart; falsePtr--) {
                     updateNodeArray(*falsePtr, FALSE, !reset, false);
                 }
-                for ( ; falseNodeIDPtr > falsePtrStart; falseNodeIDPtr--) {
+                for ( ; falseNodeIDPtr < falsePtrStart; falseNodeIDPtr--) {
                     if (reset)
                         nodeVector[*falsePtr].state = FALSE;
                     else
@@ -414,19 +414,15 @@ bool Engine::constrain(const TNodeID nodeID, const State state, const bool reset
 
 bool Engine::backtrack()
 {
-    TNodeID nodeID = 0;
-    while (true) {
-        bool a = constrain(nodeID, TRUE, false);
-        const Node& node = nodeVector[nodeID];
-        if (node.state)
+    for (TNodeID* ptr = nodeIDArray.get(); ptr < nodeIDArrayPtrEnd; ) {
+        const Node& node = nodeVector[*ptr];
+        if (node.state != MAYBE) continue;
+        if (constrain(*ptr, TRUE, false) || constrain(*ptr, FALSE, false)) {
+            ptr++;            
+        } else {
+            ptr--;
+        }
     }
-    for (TNodeID nodeID = 0; nodeID < nodeVector.size(); nodeID++) {
-        if (constrain(nodeID, TRUE, false)) continue;
-        constrain(nodeID, TRUE, true);
-
-    }
-        if (constrain(nodeID, TRUE, false) || constrain(nodeID, FALSE, false))
-            return false;
     return true;
 }
 
@@ -444,9 +440,9 @@ bool Engine::updateNodeArray(const unique_ptr<TLinkID[]>& nodeArray, const TLink
 {
     TLinkID* ptr = nodeArray.get();
     for (TLinkID* inPtr = ptr + inLen; ptr < inPtr; ptr++)
-        if (!updateLink(*ptr, IN, reset, propagate)) return false;
+        if (!updateLink(*ptr, IN, reset, propagate) && propagate) return false;
     for (TLinkID* outPtr = ptr + outLen; ptr < outPtr; ptr++)
-        if (!updateLink(*ptr, OUT, reset, propagate)) return false;
+        if (!updateLink(*ptr, OUT, reset, propagate) && propagate) return false;
     return true;
 }
 
@@ -464,9 +460,7 @@ bool Engine::updateLink(const TLinkID linkID, const Side side, const bool reset,
         else
             link.outCount++;
     }
-    if (propagate)
-        return updateLinkArray(link, reset);
-    return true;
+    return propagate ? updateLinkArray(link, reset) : true;
 }
 
 bool Engine::updateLinkArray(const Link& link, const bool reset)
