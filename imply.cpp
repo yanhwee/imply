@@ -359,32 +359,57 @@ void Engine::selfAssert(bool strong) {
 //     }
 // }
 
+// Bug to fix:
+// If someone called on this function param reset with true and then with false
+// Functions are meant to be self contained!
+// However this creates a problem with backtrack as memory is allocated and freed too easily
 bool Engine::constrain(const TNodeID nodeID, const State state, const bool reset)
 {
+    TNodeID* truePtrStart = trueNodeIDPtr;
+    TNodeID* truePtr = truePtrStart;
+    TNodeID* falsePtrStart = falseNodeIDPtr;
+    TNodeID* falsePtr = falsePtrStart;
     if (!updateNode(nodeID, state, reset)) return false;
+
     while (true) {
-        TNodeID* truePtrStart = trueNodeIDPtr;
-        TNodeID* truePtr = trueNodeIDPtr;
         for ( ; truePtr < trueNodeIDPtr; truePtr++) {
-            if (!updateNodeArray(*truePtr, TRUE, reset)) {
-                for (trueNodeIDPtr--; trueNodeIDPtr > truePtr; trueNodeIDPtr--) {
-                    nodeVector[*trueNodeIDPtr].state = MAYBE;
+            if (!updateNodeArray(*truePtr, TRUE, reset, true)) {
+                for ( ; truePtr >= truePtrStart; truePtr--) {
+                    updateNodeArray(*truePtr, TRUE, !reset, false);
                 }
+                trueNodeIDPtr--;
                 for ( ; trueNodeIDPtr >= truePtrStart; trueNodeIDPtr--) {
-                    nodeVector
+                    if (reset)
+                        nodeVector[*truePtr].state = TRUE;
+                    else
+                        nodeVector[*truePtr].state = MAYBE;
                 }
+                trueNodeIDPtr++;
+                return false;
             }
         }
-        for ( ; trueNodeIDPtr >= nodeIDArray.get(); trueNodeIDPtr--)
-            if (!updateNodeArray(*trueNodeIDPtr, TRUE, reset)) return false;
+        if (!(--falsePtr >= falseNodeIDPtr)) break;
 
-        if (!(falseNodeIDPtr < nodeIDArrayPtrEnd)) return true;
-
-        for ( ; falseNodeIDPtr < nodeIDArrayPtrEnd; falseNodeIDPtr++)
-            if (!updateNodeArray(*falseNodeIDPtr, FALSE, reset)) return false;
-
-        if (!(trueNodeIDPtr >= nodeIDArray.get())) return true;
+        for ( ; falsePtr >= falseNodeIDPtr; falsePtr--) {
+            if (!updateNodeArray(*falsePtr, FALSE, reset, true)) {
+                for ( ; falsePtr > falsePtrStart; falsePtr--) {
+                    updateNodeArray(*falsePtr, FALSE, !reset, false);
+                }
+                for ( ; falseNodeIDPtr > falsePtrStart; falseNodeIDPtr--) {
+                    if (reset)
+                        nodeVector[*falsePtr].state = FALSE;
+                    else
+                        nodeVector[*falsePtr].state = MAYBE;
+                }
+                return false;
+            }
+        }
+        if (!(truePtr < trueNodeIDPtr)) break;
     }
+
+    trueNodeIDPtr = trueNodeIDPtr + 1;
+    falseNodeIDPtr = falseNodeIDPtr - 1;
+    return true;
 }
 
 bool Engine::backtrack()
@@ -405,27 +430,27 @@ bool Engine::backtrack()
     return true;
 }
 
-bool Engine::updateNodeArray(const TNodeID nodeID, const State state, const bool reset)
+bool Engine::updateNodeArray(const TNodeID nodeID, const State state, const bool reset, const bool propagate)
 {
     assert(state == TRUE || state == FALSE);
     const Node& node = nodeVector[nodeID];
     if (state == TRUE)
-        return updateNodeArray(node.trueArray, node.trueInLen, node.trueOutLen, reset);
+        return updateNodeArray(node.trueArray, node.trueInLen, node.trueOutLen, reset, propagate);
     else
-        return updateNodeArray(node.falseArray, node.falseInLen, node.falseOutLen, reset);
+        return updateNodeArray(node.falseArray, node.falseInLen, node.falseOutLen, reset, propagate);
 }
 
-bool Engine::updateNodeArray(const unique_ptr<TLinkID[]>& nodeArray, const TLinkID inLen, const TLinkID outLen, const bool reset)
+bool Engine::updateNodeArray(const unique_ptr<TLinkID[]>& nodeArray, const TLinkID inLen, const TLinkID outLen, const bool reset, const bool propagate)
 {
     TLinkID* ptr = nodeArray.get();
     for (TLinkID* inPtr = ptr + inLen; ptr < inPtr; ptr++)
-        if (!updateLink(*ptr, IN, reset)) return false;
+        if (!updateLink(*ptr, IN, reset, propagate)) return false;
     for (TLinkID* outPtr = ptr + outLen; ptr < outPtr; ptr++)
-        if (!updateLink(*ptr, OUT, reset)) return false;
+        if (!updateLink(*ptr, OUT, reset, propagate)) return false;
     return true;
 }
 
-bool Engine::updateLink(const TLinkID linkID, const Side side, const bool reset) {
+bool Engine::updateLink(const TLinkID linkID, const Side side, const bool reset, const bool propagate) {
     assert(side == IN || side == OUT);
     Link& link = linkVector[linkID];
     if (side == IN) {
@@ -439,7 +464,9 @@ bool Engine::updateLink(const TLinkID linkID, const Side side, const bool reset)
         else
             link.outCount++;
     }
-    return updateLinkArray(link, reset);
+    if (propagate)
+        return updateLinkArray(link, reset);
+    return true;
 }
 
 bool Engine::updateLinkArray(const Link& link, const bool reset)
@@ -486,7 +513,7 @@ bool Engine::updateNode(const TNodeID nodeID, const State state, const bool rese
         if (state == TRUE)
             *(trueNodeIDPtr++) = nodeID;
         else
-            *(falseNodeIDPtr--) = nodeID;
+            *(--falseNodeIDPtr) = nodeID;
     }
     return true;
 }

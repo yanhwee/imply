@@ -106,9 +106,9 @@ namespace Imply
         bool constrain(TNodeID nodeID, State state, bool reset);
         bool backtrack();
     private:
-        bool updateNodeArray(TNodeID nodeID, State state, bool reset);
-        bool updateNodeArray(const unique_ptr<TLinkID[]>& nodeArray, TLinkID inLen, TLinkID outLen, bool reset);
-        bool updateLink(TLinkID linkID, Side side, bool reset);
+        bool updateNodeArray(TNodeID nodeID, State state, bool reset, bool propagate);
+        bool updateNodeArray(const unique_ptr<TLinkID[]>& nodeArray, TLinkID inLen, TLinkID outLen, bool reset, bool propagate);
+        bool updateLink(TLinkID linkID, Side side, bool reset, bool propagate);
         bool updateLinkArray(const Link& link, bool reset);
         bool updateLinkArray(const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen, bool reset);
         bool updateNode(TNodeID nodeID, State state, bool reset);
