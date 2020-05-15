@@ -2,6 +2,7 @@
 #include <memory>
 using std::vector;
 using std::unique_ptr;
+using std::pair;
 
 // template<typename TNodeID, typename TLinkID>
 namespace Imply
@@ -84,12 +85,19 @@ namespace Imply
     class Engine
     {
     private:
+        struct Bound
+        {
+            friend class Engine;
+            TNodeID* trueNodeIDPtr;
+            TNodeID* falseNodeIDPtr;
+            State state;
+            Bound(TNodeID* trueNodeIDPtr, TNodeID* falseNodeIDPtr, State state);
+        };
+    private:
         vector<Node> nodeVector;
         vector<Link> linkVector;
         unique_ptr<TNodeID[]> nodeIDArray;
-        TNodeID* nodeIDArrayPtrEnd;
-        TNodeID* trueNodeIDPtr;
-        TNodeID* falseNodeIDPtr;
+        unique_ptr<Bound[]> boundArray;
     public:
         Engine();
         Engine(const Engine& other);
@@ -102,15 +110,36 @@ namespace Imply
         template<typename L>
         Engine(L&& links, TNodeID nodeSize);
 
-        void selfAssert(bool strong = false);
-        bool constrain(TNodeID nodeID, State state, bool reset);
+        bool constrain(vector<pair<TNodeID,bool>> nodeStates);
+        bool constrain(vector<TNodeID> trueNodeIDs, vector<TNodeID> falseNodeIDs);
         bool backtrack();
     private:
-        bool updateNodeArray(TNodeID nodeID, State state, bool reset, bool propagate);
-        bool updateNodeArray(const unique_ptr<TLinkID[]>& nodeArray, TLinkID inLen, TLinkID outLen, bool reset, bool propagate);
-        bool updateLink(TLinkID linkID, Side side, bool reset, bool propagate);
-        bool updateLinkArray(const Link& link, bool reset);
-        bool updateLinkArray(const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen, bool reset);
-        bool updateNode(TNodeID nodeID, State state, bool reset);
+        // Backtrack
+        bool backtrack_findMaybe(TNodeID& nodeID);
+        // Constrain & Undo
+        bool constrain(
+            TNodeID* trueNodeIDPtrStart, TNodeID* falseNodeIDPtrStart, 
+            TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd);
+        void undo(
+            TNodeID* trueNodeIDPtrStart, TNodeID* trueNodeIDPtrMid, TNodeID* trueNodeIDPtrEnd, 
+            TNodeID* falseNodeIDPtrStart, TNodeID* falseNodeIDPtrMid, TNodeID* falseNodeIDPtrEnd);
+        bool constrain_updateLinkArray(
+            TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd, 
+            const Node& node, State state, bool reset, bool propagate);
+        bool constrain_updateLinkArray(
+            TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd, 
+            const unique_ptr<TLinkID[]>& nodeArray, TLinkID inLen, TLinkID outLen, bool reset, bool propagate);
+        bool constrain_updateLink(
+            TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd, 
+            TLinkID linkID, Side side, bool reset, bool propagate);
+        bool constrain_updateNodeArray(
+            TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd, 
+            const Link& link, bool reset);
+        bool constrain_updateNodeArray(
+            TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd, 
+            const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen, bool reset);
+        bool constrain_updateNode(
+            TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd, 
+            TNodeID nodeID, State state, bool reset);
     };
-};;
+};
