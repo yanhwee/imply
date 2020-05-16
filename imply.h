@@ -40,7 +40,7 @@ namespace Imply
         Node(Node&& other) noexcept;
         Node& operator=(Node&& other) noexcept;
 
-        Node();
+        Node() noexcept;
         Node(
             const vector<TLinkID> trueInLinks,
             const vector<TLinkID> trueOutLinks,
@@ -50,17 +50,15 @@ namespace Imply
 
     class Link
     {
-    // private:
-    public:
+    private:
         friend class Engine;
         // Shared
         TNodeID inCount, outCount;
+        TNodeID inLimit, outLimit;
         // Conditional
-        TNodeID inLimitA, outLimitA;
         TNodeID trueOutLen, falseOutLen;
         unique_ptr<TNodeID[]> outArray;
         // Contrapositive
-        TNodeID inLimitB, outLimitB;
         TNodeID trueInLen, falseInLen;
         unique_ptr<TNodeID[]> inArray;
     public:
@@ -69,7 +67,7 @@ namespace Imply
         Link(Link&& other) noexcept;
         Link& operator=(Link&& other) noexcept;
 
-        Link();
+        Link() noexcept;
         Link(
             const vector<TNodeID> trueInNodes,
             const vector<TNodeID> falseInNodes,
@@ -78,10 +76,10 @@ namespace Imply
             const vector<TNodeID> falseOutNodes,
             Equality outEquality, TNodeID outLimit);
     private:
-        bool isJustConditional() const;
-        bool isJustContrapositive() const;
-        bool isJustNotConditional() const;
-        bool isJustNotContrapositive() const;
+        bool isJustConditional() const noexcept;
+        bool isJustContrapositive() const noexcept;
+        bool isJustNotConditional() const noexcept;
+        bool isJustNotContrapositive() const noexcept;
     };
 
     class Engine
@@ -93,8 +91,8 @@ namespace Imply
             TNodeID* trueNodeIDPtr;
             TNodeID* falseNodeIDPtr;
             State state;
-            Bound();
-            Bound(TNodeID* trueNodeIDPtr, TNodeID* falseNodeIDPtr, State state);
+            Bound() noexcept;
+            Bound(TNodeID* trueNodeIDPtr, TNodeID* falseNodeIDPtr, State state) noexcept;
         };
     private:
         vector<Node> nodeVector;
@@ -102,7 +100,7 @@ namespace Imply
         unique_ptr<TNodeID[]> nodeIDArray;
         unique_ptr<Bound[]> boundArray;
     public:
-        Engine();
+        Engine() noexcept;
         Engine(const Engine& other);
         Engine& operator=(const Engine& other);
         Engine(Engine&& other) noexcept;
@@ -111,42 +109,38 @@ namespace Imply
         Engine(const vector<Link>& links, TNodeID nodeSize);
         Engine(vector<Link>&& links, TNodeID nodeSize);
 
-        State getNodeState(TNodeID nodeID) { return nodeVector[nodeID].state; }
+        State getNodeState(TNodeID nodeID) const noexcept { return nodeVector[nodeID].state; }
 
-        bool constrain(vector<pair<TNodeID,bool>> nodeStates);
-        bool constrain(vector<TNodeID> trueNodeIDs, vector<TNodeID> falseNodeIDs);
-        bool backtrack();
+        bool constrain(vector<pair<TNodeID,bool>> nodeStates) noexcept;
+        bool constrain(vector<TNodeID> trueNodeIDs, vector<TNodeID> falseNodeIDs) noexcept;
+        bool backtrack() noexcept;
     private:
         // Backtrack
-        bool backtrack_findMaybe(TNodeID& nodeID);
+        bool backtrack_findMaybe(TNodeID& nodeID) noexcept;
         // Constrain & Undo
-        void append(TNodeID nodeID, State state, TNodeID*& trueNodeIDPtr, TNodeID*& falseNodeIDPtr);
         bool constrain(
             TNodeID* trueNodeIDPtrStart, TNodeID* falseNodeIDPtrStart, 
-            TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd);
+            TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd) noexcept;
         void undo(
             TNodeID* trueNodeIDPtrStart, TNodeID* trueNodeIDPtrMid, TNodeID* trueNodeIDPtrEnd, 
-            TNodeID* falseNodeIDPtrStart, TNodeID* falseNodeIDPtrMid, TNodeID* falseNodeIDPtrEnd);
+            TNodeID* falseNodeIDPtrStart, TNodeID* falseNodeIDPtrMid, TNodeID* falseNodeIDPtrEnd) noexcept;
         bool constrain_updateLinkArray(
             TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd, 
-            const Node& node, State state, bool reset, bool propagate);
+            const Node& node, State state, bool reset, bool propagate) noexcept;
         bool constrain_updateLinkArray(
             TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd, 
-            const unique_ptr<TLinkID[]>& nodeArray, TLinkID inLen, TLinkID outLen, bool reset, bool propagate);
+            const unique_ptr<TLinkID[]>& nodeArray, TLinkID inLen, TLinkID outLen, bool reset, bool propagate) noexcept;
         bool constrain_updateLink(
             TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd, 
-            TLinkID linkID, Side side, bool reset, bool propagate);
+            TLinkID linkID, Side side, bool reset, bool propagate) noexcept;
         bool constrain_updateNodeArray(
             TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd, 
-            const Link& link, bool reset);
+            const Link& link, bool reset) noexcept;
         bool constrain_updateNodeArray(
             TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd, 
-            const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen, TNodeID exLimit, bool reset);
+            const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen, TNodeID exLimit, bool reset) noexcept;
         bool constrain_updateNode(
             TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd, 
-            TNodeID nodeID, State state, bool reset);
-        // void constrain_appendNode(
-        //     TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd,
-        //     TNodeID nodeID, State state);
+            TNodeID nodeID, State state, bool reset) noexcept;
     };
 };
