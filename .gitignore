@@ -3,5 +3,5 @@
 a.*
 b.*
 c.*
-imply.exe
+*.exe
 *.txt

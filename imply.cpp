@@ -3,20 +3,19 @@
 #include <cassert>
 #include "imply.h"
 using std::vector;
-using std::make_unique;
 using std::pair;
 using namespace Imply;
 
 Node::Node(const Node& other)
     : state(other.state),
       trueInLen(other.trueInLen), trueOutLen(other.trueOutLen),
-      trueArray(make_unique<TLinkID[]>(trueInLen + trueOutLen)),
+      trueArray(std::make_unique<TLinkID[]>(trueInLen + trueOutLen)),
       falseInLen(other.falseInLen), falseOutLen(other.falseOutLen)
 {
     TLinkID trueLen = trueInLen + trueOutLen;
     TLinkID falseLen = falseInLen + falseOutLen;
-    trueArray = make_unique<TLinkID[]>(trueLen);
-    falseArray = make_unique<TLinkID[]>(falseLen);
+    trueArray = std::make_unique<TLinkID[]>(trueLen);
+    falseArray = std::make_unique<TLinkID[]>(falseLen);
     std::copy(other.trueArray.get(), other.trueArray.get() + trueLen, trueArray.get());
     std::copy(other.falseArray.get(), other.falseArray.get() + falseLen, falseArray.get());
 }
@@ -28,8 +27,8 @@ Node& Node::operator=(const Node& other)
     falseInLen = other.falseInLen; falseOutLen = other.falseOutLen;
     TLinkID trueLen = trueInLen + trueOutLen;
     TLinkID falseLen = falseInLen + falseOutLen;
-    trueArray = make_unique<TLinkID[]>(trueLen);
-    falseArray = make_unique<TLinkID[]>(falseLen);
+    trueArray = std::make_unique<TLinkID[]>(trueLen);
+    falseArray = std::make_unique<TLinkID[]>(falseLen);
     std::copy(other.trueArray.get(), other.trueArray.get() + trueLen, trueArray.get());
     std::copy(other.falseArray.get(), other.falseArray.get() + falseLen, falseArray.get());
     return *this;
@@ -58,16 +57,16 @@ Node::Node()
       falseInLen(0), falseOutLen(0), falseArray() {}
 
 Node::Node(
-    const vector<TLinkID>& trueInLinks, const vector<TLinkID>& trueOutLinks,
-    const vector<TLinkID>& falseInLinks, const vector<TLinkID>& falseOutLinks)
+    const vector<TLinkID> trueInLinks, const vector<TLinkID> trueOutLinks,
+    const vector<TLinkID> falseInLinks, const vector<TLinkID> falseOutLinks)
     : state(MAYBE),
       trueInLen(trueInLinks.size()), trueOutLen(trueOutLinks.size()),
       falseInLen(falseInLinks.size()), falseOutLen(falseOutLinks.size())
 {
     TLinkID trueLen = trueInLen + trueOutLen;
     TLinkID falseLen = falseInLen + falseOutLen;
-    trueArray = make_unique<TLinkID[]>(trueLen);
-    falseArray = make_unique<TLinkID[]>(falseLen);
+    trueArray = std::make_unique<TLinkID[]>(trueLen);
+    falseArray = std::make_unique<TLinkID[]>(falseLen);
     std::copy(trueInLinks.cbegin(), trueInLinks.cend(), trueArray.get());
     std::copy(trueOutLinks.cbegin(), trueOutLinks.cend(), trueArray.get() + trueInLen);
     std::copy(falseInLinks.cbegin(), falseInLinks.cend(), falseArray.get());
@@ -83,8 +82,8 @@ Link::Link(const Link& other)
 {
     TNodeID outLen = trueOutLen + falseOutLen;
     TNodeID inLen = trueInLen + falseInLen;
-    outArray = make_unique<TNodeID[]>(outLen);
-    inArray = make_unique<TNodeID[]>(inLen);
+    outArray = std::make_unique<TNodeID[]>(outLen);
+    inArray = std::make_unique<TNodeID[]>(inLen);
     std::copy(other.outArray.get(), other.outArray.get() + outLen, outArray.get());
     std::copy(other.inArray.get(), other.inArray.get() + inLen, inArray.get());
 }
@@ -98,8 +97,8 @@ Link& Link::operator=(const Link& other)
     trueInLen = other.trueInLen; falseInLen = other.falseInLen;
     TNodeID outLen = trueOutLen + falseOutLen;
     TNodeID inLen = trueInLen + falseInLen;
-    outArray = make_unique<TNodeID[]>(outLen);
-    inArray = make_unique<TNodeID[]>(inLen);
+    outArray = std::make_unique<TNodeID[]>(outLen);
+    inArray = std::make_unique<TNodeID[]>(inLen);
     std::copy(other.outArray.get(), other.outArray.get() + outLen, outArray.get());
     std::copy(other.inArray.get(), other.inArray.get() + inLen, inArray.get());
     return *this;
@@ -134,50 +133,50 @@ Link& Link::operator=(Link&& other) noexcept
 Link::Link()
     : inCount(0), outCount(0),
       inLimitA(0), outLimitA(0),
-      trueOutLen(0), falseOutLen(0), outArray(),
+      trueOutLen(0), falseOutLen(0), outArray(std::make_unique<TNodeID[]>(0)),
       inLimitB(0), outLimitB(0),
-      trueInLen(0), falseInLen(0), inArray() {}
+      trueInLen(0), falseInLen(0), inArray(std::make_unique<TNodeID[]>(0)) {}
 
 Link::Link(
-    const vector<TNodeID>& trueInNodes, 
-    const vector<TNodeID>& falseInNodes,
+    const vector<TNodeID> trueInNodes,
+    const vector<TNodeID> falseInNodes,
     Equality inEquality, TNodeID inLimit,
-    const vector<TNodeID>& trueOutNodes, 
-    const vector<TNodeID>& falseOutNodes,
+    const vector<TNodeID> trueOutNodes,
+    const vector<TNodeID> falseOutNodes,
     Equality outEquality, TNodeID outLimit)
     : inCount(0), outCount(0)
 {
-    // Conditional
+    // In
     TNodeID inLen = trueInNodes.size() + falseInNodes.size();
-    Link::inArray = make_unique<TNodeID[]>(inLen);
+    Link::inArray = std::make_unique<TNodeID[]>(inLen);
     if (inEquality & IS_GREATER) {
         Link::trueInLen = trueInNodes.size();
         Link::falseInLen = falseInNodes.size();
         std::copy(trueInNodes.cbegin(), trueInNodes.cend(), Link::inArray.get());
-        std::copy(falseInNodes.cbegin(), falseInNodes.cend(), Link::inArray.get() + Link::trueInLen);
+        std::copy(falseInNodes.cbegin(), falseInNodes.cend(), Link::inArray.get() + trueInNodes.size());
     } else {
         Link::trueInLen = falseInNodes.size();
         Link::falseInLen = trueInNodes.size();
         std::copy(falseInNodes.cbegin(), falseInNodes.cend(), Link::inArray.get());
-        std::copy(trueInNodes.cbegin(), trueInNodes.cend(), Link::inArray.get() + Link::falseInLen);
+        std::copy(trueInNodes.cbegin(), trueInNodes.cend(), Link::inArray.get() + falseInNodes.size());
         inLimit = inLen - inLimit;
     }
     if (!(inEquality & IS_EQUAL)) inLimit += 1;
     Link::inLimitA = inLimit;
     Link::inLimitB = (inLen - Link::inLimitA) + 1;
-    // Contrapositive
+    // Out
     TNodeID outLen = trueOutNodes.size() + falseOutNodes.size();
-    Link::outArray = make_unique<TNodeID[]>(outLen);
+    Link::outArray = std::make_unique<TNodeID[]>(outLen);
     if (!(outEquality & IS_GREATER)) {
         Link::trueOutLen = trueOutNodes.size();
         Link::falseOutLen = falseOutNodes.size();
         std::copy(trueOutNodes.cbegin(), trueOutNodes.cend(), Link::outArray.get());
-        std::copy(falseOutNodes.cbegin(), falseOutNodes.cend(), Link::outArray.get() + Link::trueOutLen);
+        std::copy(falseOutNodes.cbegin(), falseOutNodes.cend(), Link::outArray.get() + trueOutNodes.size());
     } else {
         Link::trueOutLen = falseOutNodes.size();
         Link::falseOutLen = trueOutNodes.size();
         std::copy(falseOutNodes.cbegin(), falseOutNodes.cend(), Link::outArray.get());
-        std::copy(trueOutNodes.cbegin(), trueOutNodes.cend(), Link::outArray.get() + Link::falseOutLen);
+        std::copy(trueOutNodes.cbegin(), trueOutNodes.cend(), Link::outArray.get() + falseOutNodes.size());
         outLimit = outLen - outLimit;
     }
     if (!(outEquality & IS_EQUAL)) outLimit += 1;
@@ -213,6 +212,9 @@ bool Link::isJustNotContrapositive() const
     return l_e && e_le;
 }
 
+Engine::Bound::Bound()
+    :trueNodeIDPtr(nullptr), falseNodeIDPtr(nullptr), state(TRUE) {}
+
 Engine::Bound::Bound(TNodeID* trueNodeIDPtr, TNodeID* falseNodeIDPtr, State state)
     : trueNodeIDPtr(trueNodeIDPtr), falseNodeIDPtr(falseNodeIDPtr), state(state) {}
 
@@ -224,7 +226,7 @@ Engine::Engine(const Engine& other)
     : nodeVector(other.nodeVector),
       linkVector(other.linkVector)
 {
-    nodeIDArray = make_unique<TNodeID[]>(nodeVector.size());
+    nodeIDArray = std::make_unique<TNodeID[]>(nodeVector.size());
     std::copy(other.nodeIDArray.get(), other.nodeIDArray.get() + other.nodeVector.size(), nodeIDArray.get());
     std::copy(other.boundArray.get(), other.boundArray.get() + other.nodeVector.size(), boundArray.get());
 }
@@ -233,7 +235,7 @@ Engine& Engine::operator=(const Engine& other)
 {
     nodeVector = other.nodeVector;
     linkVector = other.linkVector;
-    nodeIDArray = make_unique<TNodeID[]>(nodeVector.size());
+    nodeIDArray = std::make_unique<TNodeID[]>(nodeVector.size());
     std::copy(other.nodeIDArray.get(), other.nodeIDArray.get() + other.nodeVector.size(), nodeIDArray.get());
     std::copy(other.boundArray.get(), other.boundArray.get() + other.nodeVector.size(), boundArray.get());
     return *this;
@@ -254,19 +256,14 @@ Engine& Engine::operator=(Engine&& other) noexcept
     return *this;
 }
 
-template<typename L, typename N>
-Engine::Engine(L&& links, N&& nodes)
-    : linkVector(links),
-      nodeVector(nodes),
-      nodeIDArray(nodeVector.size()),
-      boundArray(nodeVector.size()) {}
+Engine::Engine(const vector<Link>& links, TNodeID nodeSize)
+    : Engine(vector<Link>(links), nodeSize) {}
 
-template<typename L>
-Engine::Engine(L&& links, TNodeID nodeSize)
-    : linkVector(links),
+Engine::Engine(vector<Link>&& links, TNodeID nodeSize)
+    : linkVector(std::move(links)),
       nodeVector(nodeSize),
-      nodeIDArray(nodeVector.size()),
-      boundArray(nodeVector.size())
+      nodeIDArray(std::make_unique<TNodeID[]>(nodeSize)),
+      boundArray(std::make_unique<Bound[]>(nodeSize))
 {
     // Find Lengths
     for (const Link& link : linkVector) {
@@ -283,8 +280,8 @@ Engine::Engine(L&& links, TNodeID nodeSize)
     }
     for (Node& node : nodeVector) {
         // Allocate Array
-        node.trueArray = make_unique<TLinkID[]>(node.trueInLen + node.trueOutLen);
-        node.falseArray = make_unique<TLinkID[]>(node.falseInLen + node.falseOutLen);
+        node.trueArray = std::make_unique<TLinkID[]>(node.trueInLen + node.trueOutLen);
+        node.falseArray = std::make_unique<TLinkID[]>(node.falseInLen + node.falseOutLen);
         // Lengths as Indices
         node.trueOutLen = node.trueInLen;
         node.falseOutLen = node.falseInLen;
@@ -331,8 +328,14 @@ bool Engine::constrain(vector<pair<TNodeID,bool>> nodeStates)
         bool state = nodeState.second;
         assert(nodeID < nodeVector.size());
 
-        if (state) *(trueNodeIDPtrEnd++)  = nodeID;
-        else       *(falseNodeIDPtrEnd--) = nodeID;
+        Node& node = nodeVector[nodeID];
+        if (state) {
+            node.state = TRUE;
+            *(trueNodeIDPtrEnd++) = nodeID;
+        } else {
+            node.state = FALSE;
+            *(falseNodeIDPtrEnd--) = nodeID;
+        }
     }
     return constrain(
         trueNodeIDPtrStart, falseNodeIDPtrStart, 
@@ -347,11 +350,13 @@ bool Engine::constrain(vector<TNodeID> trueNodeIDs, vector<TNodeID> falseNodeIDs
     TNodeID* falseNodeIDPtrEnd = falseNodeIDPtrStart;
     for (TNodeID nodeID : trueNodeIDs) {
         assert(nodeID < nodeVector.size());
+        nodeVector[nodeID].state = TRUE;
         *(trueNodeIDPtrEnd++) = nodeID;
     }
     for (TNodeID nodeID : falseNodeIDs) {
         assert(nodeID < nodeVector.size());
-        *(falseNodeIDPtrEnd++) = nodeID;
+        nodeVector[nodeID].state = FALSE;
+        *(falseNodeIDPtrEnd--) = nodeID;
     }
     return constrain(
         trueNodeIDPtrStart, falseNodeIDPtrStart, 
@@ -529,38 +534,48 @@ bool Engine::constrain_updateNodeArray(
         if (link.isJustNotConditional())
             return constrain_updateNodeArray(
                 trueNodeIDPtrEnd, falseNodeIDPtrEnd, 
-                link.outArray, link.trueOutLen, link.falseOutLen, reset);
+                link.outArray, link.trueOutLen, link.falseOutLen, link.outLimitA, reset);
         else if (link.isJustNotContrapositive())
             return constrain_updateNodeArray(
                 trueNodeIDPtrEnd, falseNodeIDPtrEnd, 
-                link.inArray, link.trueInLen, link.falseInLen, reset);
+                link.inArray, link.trueInLen, link.falseInLen, link.inLimitB, reset);
     } else {
         if (link.isJustConditional())
             return constrain_updateNodeArray(
                 trueNodeIDPtrEnd, falseNodeIDPtrEnd, 
-                link.outArray, link.trueOutLen, link.falseOutLen, reset);
+                link.outArray, link.trueOutLen, link.falseOutLen, link.outLimitA, reset);
         else if (link.isJustContrapositive())
             return constrain_updateNodeArray(
                 trueNodeIDPtrEnd, falseNodeIDPtrEnd, 
-                link.inArray, link.trueInLen, link.falseInLen, reset);
+                link.inArray, link.trueInLen, link.falseInLen, link.inLimitB, reset);
     }
     return true;
 }
 
 bool Engine::constrain_updateNodeArray(
     TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd, 
-    const unique_ptr<TNodeID[]>& linkArray, const TNodeID trueLen, const TNodeID falseLen, const bool reset)
+    const unique_ptr<TNodeID[]>& linkArray, const TNodeID trueLen, const TNodeID falseLen, TNodeID exLimit, const bool reset)
 {
+    TNodeID count = 0;
     const TNodeID* ptr = linkArray.get();
     for (const TNodeID* truePtr = ptr + trueLen; ptr < truePtr; ptr++)
         if (!constrain_updateNode(
             trueNodeIDPtrEnd, falseNodeIDPtrEnd, 
-            *ptr, TRUE, reset)) return false;
+            *ptr, FALSE, reset) && ++count > exLimit) return false;
     for (const TNodeID* falsePtr = ptr + falseLen; ptr < falsePtr; ptr++)
         if (!constrain_updateNode(
             trueNodeIDPtrEnd, falseNodeIDPtrEnd, 
-            *ptr, FALSE, reset)) return false;
+            *ptr, TRUE, reset) && ++count > exLimit) return false;
+    assert(count == exLimit);
     return true;
+    // for (const TNodeID* truePtr = ptr + trueLen; ptr < truePtr; ptr++)
+    //     if (!constrain_updateNode(
+    //         trueNodeIDPtrEnd, falseNodeIDPtrEnd, 
+    //         *ptr, TRUE, reset)) return false;
+    // for (const TNodeID* falsePtr = ptr + falseLen; ptr < falsePtr; ptr++)
+    //     if (!constrain_updateNode(
+    //         trueNodeIDPtrEnd, falseNodeIDPtrEnd, 
+    //         *ptr, FALSE, reset)) return false;
 }
 
 bool Engine::constrain_updateNode(
@@ -570,7 +585,7 @@ bool Engine::constrain_updateNode(
     assert(state == TRUE || state == FALSE);
     Node& node = nodeVector[nodeID];
     if (node.state == (1 - state)) return false;
-    bool checkState, newState;
+    State checkState, newState;
     if (reset) {
         checkState = state;
         newState = MAYBE;

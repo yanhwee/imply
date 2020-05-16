@@ -1,12 +1,13 @@
 #include <vector>
 #include <memory>
-using std::vector;
-using std::unique_ptr;
-using std::pair;
+#include <iostream>
 
 // template<typename TNodeID, typename TLinkID>
 namespace Imply
 {
+    using std::vector;
+    using std::unique_ptr;
+    using std::pair;
     typedef unsigned char State;
     typedef unsigned char Side;
     typedef unsigned int TNodeID;
@@ -41,15 +42,16 @@ namespace Imply
 
         Node();
         Node(
-            const vector<TLinkID>& trueInLinks,
-            const vector<TLinkID>& trueOutLinks,
-            const vector<TLinkID>& falseInLinks,
-            const vector<TLinkID>& falseOutLinks);
+            const vector<TLinkID> trueInLinks,
+            const vector<TLinkID> trueOutLinks,
+            const vector<TLinkID> falseInLinks,
+            const vector<TLinkID> falseOutLinks);
     };
 
     class Link
     {
-    private:
+    // private:
+    public:
         friend class Engine;
         // Shared
         TNodeID inCount, outCount;
@@ -69,11 +71,11 @@ namespace Imply
 
         Link();
         Link(
-            const vector<TNodeID>& trueInNodes, 
-            const vector<TNodeID>& falseInNodes,
+            const vector<TNodeID> trueInNodes,
+            const vector<TNodeID> falseInNodes,
             Equality inEquality, TNodeID inLimit,
-            const vector<TNodeID>& trueOutNodes, 
-            const vector<TNodeID>& falseOutNodes,
+            const vector<TNodeID> trueOutNodes,
+            const vector<TNodeID> falseOutNodes,
             Equality outEquality, TNodeID outLimit);
     private:
         bool isJustConditional() const;
@@ -91,6 +93,7 @@ namespace Imply
             TNodeID* trueNodeIDPtr;
             TNodeID* falseNodeIDPtr;
             State state;
+            Bound();
             Bound(TNodeID* trueNodeIDPtr, TNodeID* falseNodeIDPtr, State state);
         };
     private:
@@ -105,10 +108,10 @@ namespace Imply
         Engine(Engine&& other) noexcept;
         Engine& operator=(Engine&& other) noexcept;
 
-        template<typename L, typename N>
-        Engine(L&& links, N&& nodes);
-        template<typename L>
-        Engine(L&& links, TNodeID nodeSize);
+        Engine(const vector<Link>& links, TNodeID nodeSize);
+        Engine(vector<Link>&& links, TNodeID nodeSize);
+
+        State getNodeState(TNodeID nodeID) { return nodeVector[nodeID].state; }
 
         bool constrain(vector<pair<TNodeID,bool>> nodeStates);
         bool constrain(vector<TNodeID> trueNodeIDs, vector<TNodeID> falseNodeIDs);
@@ -117,6 +120,7 @@ namespace Imply
         // Backtrack
         bool backtrack_findMaybe(TNodeID& nodeID);
         // Constrain & Undo
+        void append(TNodeID nodeID, State state, TNodeID*& trueNodeIDPtr, TNodeID*& falseNodeIDPtr);
         bool constrain(
             TNodeID* trueNodeIDPtrStart, TNodeID* falseNodeIDPtrStart, 
             TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd);
@@ -137,9 +141,12 @@ namespace Imply
             const Link& link, bool reset);
         bool constrain_updateNodeArray(
             TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd, 
-            const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen, bool reset);
+            const unique_ptr<TNodeID[]>& linkArray, TNodeID trueLen, TNodeID falseLen, TNodeID exLimit, bool reset);
         bool constrain_updateNode(
             TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd, 
             TNodeID nodeID, State state, bool reset);
+        // void constrain_appendNode(
+        //     TNodeID*& trueNodeIDPtrEnd, TNodeID*& falseNodeIDPtrEnd,
+        //     TNodeID nodeID, State state);
     };
 };
