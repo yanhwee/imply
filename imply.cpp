@@ -56,8 +56,8 @@ Node::Node() noexcept
       falseInLen(0), falseOutLen(0), falseArray() {}
 
 Node::Node(
-    const vector<TLinkID> trueInLinks, const vector<TLinkID> trueOutLinks,
-    const vector<TLinkID> falseInLinks, const vector<TLinkID> falseOutLinks)
+    const vector<TLinkID>& trueInLinks, const vector<TLinkID>& trueOutLinks,
+    const vector<TLinkID>& falseInLinks, const vector<TLinkID>& falseOutLinks)
     : state(MAYBE),
       trueInLen(trueInLinks.size()), trueOutLen(trueOutLinks.size()),
       falseInLen(falseInLinks.size()), falseOutLen(falseOutLinks.size())
@@ -127,11 +127,11 @@ Link::Link() noexcept
       trueInLen(0), falseInLen(0), inArray() {}
 
 Link::Link(
-    const vector<TNodeID> trueInNodes,
-    const vector<TNodeID> falseInNodes,
+    const vector<TNodeID>& trueInNodes,
+    const vector<TNodeID>& falseInNodes,
     Equality inEquality, TNodeID inLimit,
-    const vector<TNodeID> trueOutNodes,
-    const vector<TNodeID> falseOutNodes,
+    const vector<TNodeID>& trueOutNodes,
+    const vector<TNodeID>& falseOutNodes,
     Equality outEquality, TNodeID outLimit)
     : inCount(0), outCount(0)
 {
@@ -310,7 +310,7 @@ Engine::Engine(vector<Link>&& links, TNodeID nodeSize)
     }
 }
 
-bool Engine::constrain(vector<pair<TNodeID,bool>> nodeStates) noexcept
+bool Engine::constrain(const vector<pair<TNodeID,bool>>& nodeStates) noexcept
 {
     TNodeID* trueNodeIDPtrStart = nodeIDArray.get();
     TNodeID* falseNodeIDPtrStart = nodeIDArray.get() + nodeVector.size() - 1;
@@ -322,6 +322,7 @@ bool Engine::constrain(vector<pair<TNodeID,bool>> nodeStates) noexcept
         assert(nodeID < nodeVector.size());
 
         Node& node = nodeVector[nodeID];
+        assert(node.state == MAYBE);
         if (state) {
             node.state = TRUE;
             *(trueNodeIDPtrEnd++) = nodeID;
@@ -335,7 +336,7 @@ bool Engine::constrain(vector<pair<TNodeID,bool>> nodeStates) noexcept
         trueNodeIDPtrEnd, falseNodeIDPtrEnd);
 }
 
-bool Engine::constrain(vector<TNodeID> trueNodeIDs, vector<TNodeID> falseNodeIDs) noexcept
+bool Engine::constrain(const vector<TNodeID>& trueNodeIDs, const vector<TNodeID>& falseNodeIDs) noexcept
 {
     TNodeID* trueNodeIDPtrStart = nodeIDArray.get();
     TNodeID* falseNodeIDPtrStart = nodeIDArray.get() + nodeVector.size() - 1;
@@ -343,12 +344,16 @@ bool Engine::constrain(vector<TNodeID> trueNodeIDs, vector<TNodeID> falseNodeIDs
     TNodeID* falseNodeIDPtrEnd = falseNodeIDPtrStart;
     for (TNodeID nodeID : trueNodeIDs) {
         assert(nodeID < nodeVector.size());
-        nodeVector[nodeID].state = TRUE;
+        Node& node = nodeVector[nodeID];
+        assert(node.state == MAYBE);
+        node.state = TRUE;
         *(trueNodeIDPtrEnd++) = nodeID;
     }
     for (TNodeID nodeID : falseNodeIDs) {
         assert(nodeID < nodeVector.size());
-        nodeVector[nodeID].state = FALSE;
+        Node& node = nodeVector[nodeID];
+        assert(node.state == MAYBE);
+        node.state = FALSE;
         *(falseNodeIDPtrEnd--) = nodeID;
     }
     return constrain(
@@ -426,7 +431,7 @@ bool Engine::constrain(
                     trueNodeIDPtrEnd, falseNodeIDPtrEnd, 
                     nodeVector[*trueNodeIDPtr], TRUE, false, true)) {
                 undo(
-                    trueNodeIDPtrStart, trueNodeIDPtr, trueNodeIDPtrEnd, 
+                    trueNodeIDPtrStart, trueNodeIDPtr + 1, trueNodeIDPtrEnd, 
                     falseNodeIDPtrStart, falseNodeIDPtr, falseNodeIDPtrEnd);
                 return false;
             }
@@ -439,7 +444,7 @@ bool Engine::constrain(
                     nodeVector[*falseNodeIDPtr], FALSE, false, true)) {
                 undo(
                     trueNodeIDPtrStart, trueNodeIDPtr, trueNodeIDPtrEnd, 
-                    falseNodeIDPtrStart, falseNodeIDPtr, falseNodeIDPtrEnd);
+                    falseNodeIDPtrStart, falseNodeIDPtr - 1, falseNodeIDPtrEnd);
                 return false;
             }
         }
@@ -451,7 +456,7 @@ void Engine::undo(
     TNodeID* trueNodeIDPtrStart, TNodeID* trueNodeIDPtrMid, TNodeID* trueNodeIDPtrEnd,
     TNodeID* falseNodeIDPtrStart, TNodeID* falseNodeIDPtrMid, TNodeID* falseNodeIDPtrEnd) noexcept
 {
-    for ( ; trueNodeIDPtrStart <= trueNodeIDPtrMid; trueNodeIDPtrStart++) {
+    for ( ; trueNodeIDPtrStart < trueNodeIDPtrMid; trueNodeIDPtrStart++) {
         Node& node = nodeVector[*trueNodeIDPtrStart];
         node.state = MAYBE;
         constrain_updateLinkArray(
@@ -461,7 +466,7 @@ void Engine::undo(
     for ( ; trueNodeIDPtrStart < trueNodeIDPtrEnd; trueNodeIDPtrStart++)
         nodeVector[*trueNodeIDPtrStart].state = MAYBE;
 
-    for ( ; falseNodeIDPtrStart >= falseNodeIDPtrMid; falseNodeIDPtrStart--) {
+    for ( ; falseNodeIDPtrStart > falseNodeIDPtrMid; falseNodeIDPtrStart--) {
         Node& node = nodeVector[*falseNodeIDPtrStart];
         node.state = MAYBE;
         constrain_updateLinkArray(

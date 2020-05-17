@@ -7,10 +7,10 @@ int main(void)
 {
     // Link link = Link({0,1}, {}, GE, 1, {2}, {}, GE, 1);
     vector<Link> links {
-        {{0, 1}, {}, GE, 2, {2, 3}, {}, GE, 2}
+        {{}, {}, GE, 0, {0,1,2}, {}, GE, 1}
     };
 
-    int n = 4;
+    int n = 3;
     Engine engine(std::move(links), n);
 
     cout << "Before:";
@@ -18,16 +18,17 @@ int main(void)
     cout << "\n";
 
     bool retA = engine.constrain({
-        {2, false}
+        {0, false},
+        {1, false}
     });
 
-    bool retB = engine.backtrack();
+    // bool retB = engine.backtrack();
 
     cout << "After:";
     for (int i = 0; i < n; i++) cout << " " << (int) engine.getNodeState(i);
     cout << "\n";
 
     cout << "RetA: " << retA << "\n";
-    cout << "RetB: " << retB << "\n";
+    // cout << "RetB: " << retB << "\n";
     return 0;
 }

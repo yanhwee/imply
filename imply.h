@@ -42,10 +42,10 @@ namespace Imply
 
         Node() noexcept;
         Node(
-            const vector<TLinkID> trueInLinks,
-            const vector<TLinkID> trueOutLinks,
-            const vector<TLinkID> falseInLinks,
-            const vector<TLinkID> falseOutLinks);
+            const vector<TLinkID>& trueInLinks,
+            const vector<TLinkID>& trueOutLinks,
+            const vector<TLinkID>& falseInLinks,
+            const vector<TLinkID>& falseOutLinks);
     };
 
     class Link
@@ -69,11 +69,11 @@ namespace Imply
 
         Link() noexcept;
         Link(
-            const vector<TNodeID> trueInNodes,
-            const vector<TNodeID> falseInNodes,
+            const vector<TNodeID>& trueInNodes,
+            const vector<TNodeID>& falseInNodes,
             Equality inEquality, TNodeID inLimit,
-            const vector<TNodeID> trueOutNodes,
-            const vector<TNodeID> falseOutNodes,
+            const vector<TNodeID>& trueOutNodes,
+            const vector<TNodeID>& falseOutNodes,
             Equality outEquality, TNodeID outLimit);
     private:
         bool isJustConditional() const noexcept;
@@ -111,8 +111,8 @@ namespace Imply
 
         State getNodeState(TNodeID nodeID) const noexcept { return nodeVector[nodeID].state; }
 
-        bool constrain(vector<pair<TNodeID,bool>> nodeStates) noexcept;
-        bool constrain(vector<TNodeID> trueNodeIDs, vector<TNodeID> falseNodeIDs) noexcept;
+        bool constrain(const vector<pair<TNodeID,bool>>& nodeStates) noexcept;
+        bool constrain(const vector<TNodeID>& trueNodeIDs, const vector<TNodeID>& falseNodeIDs) noexcept;
         bool backtrack() noexcept;
     private:
         // Backtrack
