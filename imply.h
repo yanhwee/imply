@@ -30,10 +30,8 @@ namespace Imply
     private:
         friend class Engine;
         State state;
-        TLinkID trueInLen, trueOutLen;
-        unique_ptr<TLinkID[]> trueArray;
-        TLinkID falseInLen, falseOutLen;
-        unique_ptr<TLinkID[]> falseArray;
+        TLinkID trueLen, falseLen;
+        unique_ptr<TLinkID[]> linkArray;
     public:
         Node(const Node& other);
         Node& operator=(const Node& other);
@@ -42,25 +40,17 @@ namespace Imply
 
         Node() noexcept;
         Node(
-            const vector<TLinkID>& trueInLinks,
-            const vector<TLinkID>& trueOutLinks,
-            const vector<TLinkID>& falseInLinks,
-            const vector<TLinkID>& falseOutLinks);
+            const vector<TLinkID>& trueLinks,
+            const vector<TLinkID>& falseLinks);
     };
 
     class Link
     {
     private:
         friend class Engine;
-        // Shared
-        TNodeID inCount, outCount;
-        TNodeID inLimit, outLimit;
-        // Conditional
-        TNodeID trueOutLen, falseOutLen;
-        unique_ptr<TNodeID[]> outArray;
-        // Contrapositive
-        TNodeID trueInLen, falseInLen;
-        unique_ptr<TNodeID[]> inArray;
+        TNodeID count, limit;
+        TNodeID trueLen, falseLen;
+        unique_ptr<TNodeID[]> nodeArray;
     public:
         Link(const Link& other);
         Link& operator=(const Link& other);
@@ -69,12 +59,9 @@ namespace Imply
 
         Link() noexcept;
         Link(
-            const vector<TNodeID>& trueInNodes,
-            const vector<TNodeID>& falseInNodes,
-            Equality inEquality, TNodeID inLimit,
-            const vector<TNodeID>& trueOutNodes,
-            const vector<TNodeID>& falseOutNodes,
-            Equality outEquality, TNodeID outLimit);
+            const vector<TNodeID>& trueNodes,
+            const vector<TNodeID>& falseNodes,
+            Equality inEquality, TNodeID inLimit);
     private:
         bool isJustConditional() const noexcept;
         bool isJustContrapositive() const noexcept;
